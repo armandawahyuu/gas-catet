@@ -7,11 +7,12 @@ import (
 
 // FSM States
 const (
-	StateIdle            = 0
-	StateWaitingCategory = 1
-	StateWaitingForName  = 2
-	StateWaitingAmount   = 3
-	StateWaitingDate     = 4
+	StateIdle              = 0
+	StateWaitingCategory   = 1
+	StateWaitingForName    = 2
+	StateWaitingAmount     = 3
+	StateWaitingDate       = 4
+	StateWaitingCustomDate = 5
 )
 
 // Transaction type constants

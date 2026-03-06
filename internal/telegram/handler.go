@@ -82,6 +82,8 @@ func (h *Handler) handleMessage(msg *Message) {
 		h.handleNameInput(chatID, telegramID, text)
 	case StateWaitingAmount:
 		h.handleAmountInput(chatID, telegramID, text)
+	case StateWaitingCustomDate:
+		h.handleCustomDateInput(chatID, telegramID, text)
 	default:
 		h.sendMainMenu(chatID)
 	}
@@ -127,6 +129,8 @@ func (h *Handler) handleCallback(cb *CallbackQuery) {
 		h.handleDateSelection(chatID, cb.From.ID, "today")
 	case data == "date_yesterday":
 		h.handleDateSelection(chatID, cb.From.ID, "yesterday")
+	case data == "date_custom":
+		h.handleCustomDatePrompt(chatID)
 	case data == "cancel":
 		h.fsm.ResetSession(chatID)
 		h.sendMessage(chatID, "❌ Dibatalin ya bos. Mau nyatet lagi?")
@@ -281,6 +285,7 @@ func (h *Handler) handleAmountInput(chatID, telegramID int64, text string) {
 					{Text: "🕒 Hari Ini", CallbackData: "date_today"},
 					{Text: "🔙 Kemarin", CallbackData: "date_yesterday"},
 				},
+				{{Text: "📅 Pilih Tanggal", CallbackData: "date_custom"}},
 				{{Text: "❌ Batal", CallbackData: "cancel"}},
 			},
 		},
@@ -295,7 +300,7 @@ func (h *Handler) handleDateSelection(chatID, telegramID int64, dateChoice strin
 		return
 	}
 
-	loc, _ := time.LoadLocation("Asia/Jakarta")
+	loc := time.FixedZone("WIB", 7*60*60)
 	now := time.Now().In(loc)
 
 	var txDate string
@@ -355,6 +360,86 @@ func (h *Handler) handleDateSelection(chatID, telegramID int64, dateChoice strin
 	h.fsm.ResetSession(chatID)
 }
 
+// Custom date: prompt user to type date
+func (h *Handler) handleCustomDatePrompt(chatID int64) {
+	session := h.fsm.GetSession(chatID)
+	if session.State != StateWaitingDate {
+		h.sendMainMenu(chatID)
+		return
+	}
+
+	session.State = StateWaitingCustomDate
+	h.fsm.SetSession(chatID, session)
+
+	h.sendMessage(chatID, "📅 Ketik tanggalnya ya bos, format: DD/MM/YYYY\n\nContoh: 05/03/2026")
+}
+
+// Custom date: parse user text input
+func (h *Handler) handleCustomDateInput(chatID, telegramID int64, text string) {
+	text = strings.TrimSpace(text)
+
+	// Parse DD/MM/YYYY
+	parsed, err := time.Parse("02/01/2006", text)
+	if err != nil {
+		h.sendMessage(chatID, "⚠️ Format tanggal nggak valid bos. Pakai DD/MM/YYYY ya.\n\nContoh: 05/03/2026")
+		return
+	}
+
+	// Don't allow future dates
+	loc := time.FixedZone("WIB", 7*60*60)
+	now := time.Now().In(loc)
+	if parsed.After(now) {
+		h.sendMessage(chatID, "⚠️ Tanggal nggak boleh di masa depan bos.")
+		return
+	}
+
+	txDate := parsed.Format("2006-01-02")
+
+	session := h.fsm.GetSession(chatID)
+
+	ctx := context.Background()
+	userRow, err := h.getUserByTelegramID(ctx, telegramID)
+	if err != nil {
+		h.sendMessage(chatID, "⚠️ Gagal ambil data user. Coba lagi nanti ya bos.")
+		h.fsm.ResetSession(chatID)
+		return
+	}
+
+	_, err = h.txSvc.Create(ctx, userRow.ID, transaction.CreateRequest{
+		Amount:          session.Amount,
+		TransactionType: session.TransactionType,
+		Description:     session.Description,
+		Category:        session.Category,
+		TransactionDate: txDate,
+	})
+
+	if err != nil {
+		log.Printf("Error creating transaction: %v", err)
+		h.sendMessage(chatID, "⚠️ Gagal nyimpen transaksi. Coba lagi ya bos.")
+		h.fsm.ResetSession(chatID)
+		return
+	}
+
+	amountStr := formatRupiah(session.Amount)
+	typeEmoji := "💸"
+	typeLabel := "Pengeluaran"
+	if session.TransactionType == TypeIncome {
+		typeEmoji = "💰"
+		typeLabel = "Pemasukan"
+	}
+
+	msg := fmt.Sprintf("✅ Gas! Udah dicatet bos!\n\n%s %s\n📝 %s\n🏷️ %s\n💵 %s\n📅 %s",
+		typeEmoji, typeLabel,
+		session.Description,
+		session.Category,
+		amountStr,
+		txDate,
+	)
+
+	h.sendMessage(chatID, msg)
+	h.fsm.ResetSession(chatID)
+}
+
 func (h *Handler) handleLinkToken(chatID, telegramID int64, token string) {
 	ctx := context.Background()
 	token = strings.TrimSpace(token)
@@ -378,7 +463,7 @@ func (h *Handler) handleSaldo(chatID, telegramID int64) {
 		return
 	}
 
-	loc, _ := time.LoadLocation("Asia/Jakarta")
+	loc := time.FixedZone("WIB", 7*60*60)
 	now := time.Now().In(loc)
 
 	summary, err := h.txSvc.GetMonthlySummary(ctx, userRow.ID, now.Year(), now.Month())

@@ -157,7 +157,7 @@ const listTransactionsByUser = `-- name: ListTransactionsByUser :many
 SELECT id, user_id, amount, transaction_type, description, category, transaction_date, created_at
 FROM transactions
 WHERE user_id = $1
-ORDER BY transaction_date DESC
+ORDER BY transaction_date DESC, created_at DESC
 LIMIT $2 OFFSET $3
 `
 
@@ -211,7 +211,7 @@ const listTransactionsByUserAndType = `-- name: ListTransactionsByUserAndType :m
 SELECT id, user_id, amount, transaction_type, description, category, transaction_date, created_at
 FROM transactions
 WHERE user_id = $1 AND transaction_type = $2
-ORDER BY transaction_date DESC
+ORDER BY transaction_date DESC, created_at DESC
 LIMIT $3 OFFSET $4
 `
 

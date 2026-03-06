@@ -68,7 +68,7 @@ export default function DashboardLayout({
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 neo-border flex flex-col transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 neo-border flex flex-col transition-transform lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ background: "#FFFFFF", borderRight: "3px solid #121212" }}
@@ -144,7 +144,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0">
+      <main className="flex-1 min-w-0 lg:ml-64">
         {/* Mobile header */}
         <div
           className="lg:hidden flex items-center gap-3 p-4"
