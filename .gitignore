@@ -1,5 +1,5 @@
 # Binaries
-api
+/gascatet-api
 *.exe
 *.exe~
 *.dll
@@ -32,3 +32,4 @@ Thumbs.db
 
 # Test scripts
 test_*.sh
+/api
