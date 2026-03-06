@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-primary: #FF3B30;
+  --color-secondary: #FFCC00;
+  --color-accent: #00C781;
+  --color-base: #121212;
+  --color-bg: #FAFAFA;
+  --color-card: #FFFFFF;
+  --font-heading: "Space Grotesk", sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-base);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.neo-border {
+  border: 3px solid var(--color-base);
+}
+
+.neo-shadow {
+  box-shadow: 4px 4px 0px var(--color-base);
+}
+
+.neo-shadow-lg {
+  box-shadow: 6px 6px 0px var(--color-base);
+}
+
+.neo-card {
+  border: 3px solid var(--color-base);
+  box-shadow: 4px 4px 0px var(--color-base);
+  background: var(--color-card);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.neo-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px var(--color-base);
+}
+
+.neo-btn {
+  border: 3px solid var(--color-base);
+  box-shadow: 4px 4px 0px var(--color-base);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  cursor: pointer;
+}
+
+.neo-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px var(--color-base);
+}
+
+.neo-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px var(--color-base);
+}
+
+.neo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.neo-input {
+  border: 3px solid var(--color-base);
+  box-shadow: 3px 3px 0px var(--color-base);
+  font-family: var(--font-body);
+  transition: box-shadow 0.15s ease;
+  outline: none;
+}
+
+.neo-input:focus {
+  box-shadow: 5px 5px 0px var(--color-base);
+}
+
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-base);
+  border: 2px solid var(--color-bg);
+}
+
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
