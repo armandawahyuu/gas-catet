@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { wallets as walletsApi, type WalletItem } from "@/lib/api";
 import { formatRupiah } from "@/lib/utils";
-import { Wallet, Plus, Pencil, Trash2, X, DollarSign } from "lucide-react";
+import { Wallet, Plus, Pencil, Trash2, X } from "lucide-react";
 
 const ICON_OPTIONS = ["💵", "🏦", "📱", "💳", "🪙", "💰", "🏧", "💎"];
 
@@ -14,7 +14,6 @@ export default function WalletsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editWallet, setEditWallet] = useState<WalletItem | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [balanceWallet, setBalanceWallet] = useState<WalletItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -146,14 +145,6 @@ export default function WalletsPage() {
                 </div>
                 <div className="flex gap-1">
                   <button
-                    onClick={() => setBalanceWallet(w)}
-                    className="p-2 hover:bg-gray-100 transition-colors"
-                    style={{ color: "#00C781" }}
-                    title="Atur Saldo"
-                  >
-                    <DollarSign size={16} />
-                  </button>
-                  <button
                     onClick={() => {
                       setEditWallet(w);
                       setShowForm(true);
@@ -196,19 +187,6 @@ export default function WalletsPage() {
             setShowForm(false);
             setEditWallet(null);
             setMessage(editWallet ? "Dompet berhasil diupdate" : "Dompet berhasil ditambah");
-            loadWallets();
-          }}
-        />
-      )}
-
-      {/* Balance Modal */}
-      {balanceWallet && (
-        <BalanceForm
-          wallet={balanceWallet}
-          onClose={() => setBalanceWallet(null)}
-          onSaved={() => {
-            setBalanceWallet(null);
-            setMessage("Saldo berhasil diatur");
             loadWallets();
           }}
         />
@@ -259,6 +237,7 @@ function WalletForm({
   const isEdit = !!initial;
   const [name, setName] = useState(initial?.name || "");
   const [icon, setIcon] = useState(initial?.icon || "💰");
+  const [balance, setBalance] = useState(initial?.balance?.toString() || "0");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -273,6 +252,10 @@ function WalletForm({
     try {
       if (isEdit && initial) {
         await walletsApi.update(initial.id, name.trim(), icon);
+        const numBalance = parseInt(balance.replace(/\D/g, ""), 10);
+        if (!isNaN(numBalance) && numBalance !== initial.balance) {
+          await walletsApi.setBalance(initial.id, numBalance);
+        }
       } else {
         await walletsApi.create(name.trim(), icon);
       }
@@ -343,6 +326,22 @@ function WalletForm({
             />
           </div>
 
+          {isEdit && (
+            <div>
+              <label className="block font-heading text-xs font-bold mb-2 uppercase tracking-wider">
+                Saldo
+              </label>
+              <input
+                type="number"
+                value={balance}
+                onChange={(e) => setBalance(e.target.value)}
+                className="neo-input w-full px-4 py-3 text-sm font-mono"
+                placeholder="0"
+                min="0"
+              />
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={saving}
@@ -361,97 +360,4 @@ function WalletForm({
   );
 }
 
-function BalanceForm({
-  wallet,
-  onClose,
-  onSaved,
-}: {
-  wallet: WalletItem;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [amount, setAmount] = useState(wallet.balance.toString());
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const numAmount = parseInt(amount.replace(/\D/g, ""), 10);
-    if (isNaN(numAmount) || numAmount < 0) {
-      setError("Nominal tidak valid");
-      return;
-    }
-    setSaving(true);
-    setError("");
-    try {
-      await walletsApi.setBalance(wallet.id, numAmount);
-      onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal atur saldo");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
-      <div className="neo-card p-6 w-full max-w-md">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="font-heading text-xl font-bold">
-            Atur Saldo — {wallet.icon} {wallet.name}
-          </h3>
-          <button onClick={onClose} className="p-1 hover:opacity-70">
-            <X size={20} />
-          </button>
-        </div>
-
-        {error && (
-          <div
-            className="neo-border p-3 mb-4 text-sm font-medium"
-            style={{ background: "#FF3B30", color: "white" }}
-          >
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block font-heading text-xs font-bold mb-2 uppercase tracking-wider">
-              Saldo Saat Ini
-            </label>
-            <div className="font-mono text-lg font-bold mb-3" style={{ color: "#666" }}>
-              {formatRupiah(wallet.balance)}
-            </div>
-          </div>
-          <div>
-            <label className="block font-heading text-xs font-bold mb-2 uppercase tracking-wider">
-              Saldo Baru
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono font-bold text-sm">
-                Rp
-              </span>
-              <input
-                type="text"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
-                className="neo-input w-full pl-12 pr-4 py-3 text-sm font-mono"
-                placeholder="0"
-                required
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="neo-btn w-full py-3 text-sm text-white"
-            style={{ background: "#00C781" }}
-          >
-            {saving ? "Menyimpan..." : "Simpan Saldo"}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
