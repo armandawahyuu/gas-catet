@@ -8,6 +8,7 @@ import (
 	"gas-catet/internal/analytics"
 	"gas-catet/internal/category"
 	"gas-catet/internal/database"
+	"gas-catet/internal/recurring"
 	"gas-catet/internal/telegram"
 	"gas-catet/internal/transaction"
 	"gas-catet/internal/user"
@@ -70,6 +71,13 @@ func main() {
 	walHandler := wallet.NewHandler(walService)
 
 	txHandler := transaction.NewHandler(txService, walService)
+
+	recQueries := recurring.New(pool)
+	recService := recurring.NewService(recQueries, txService)
+	recHandler := recurring.NewHandler(recService)
+
+	// Start recurring transactions scheduler
+	recService.StartScheduler(ctx)
 
 	// Seed default categories on registration
 	userHandler.SetOnRegister(func(regCtx context.Context, userID pgtype.UUID) {
@@ -141,6 +149,13 @@ func main() {
 	transferGroup.Get("/", walHandler.ListTransfers)
 	transferGroup.Post("/", walHandler.Transfer)
 	transferGroup.Delete("/:id", walHandler.DeleteTransfer)
+
+	recGroup := api.Group("/recurring", userHandler.AuthMiddleware)
+	recGroup.Get("/", recHandler.List)
+	recGroup.Post("/", recHandler.Create)
+	recGroup.Put("/:id", recHandler.Update)
+	recGroup.Patch("/:id/toggle", recHandler.Toggle)
+	recGroup.Delete("/:id", recHandler.Delete)
 
 	analyticsGroup := api.Group("/analytics", userHandler.AuthMiddleware)
 	analyticsGroup.Get("/summary", analyticsHandler.Summary)

@@ -294,6 +294,59 @@ export const budgets = {
     request<{ message: string }>(`/api/budgets/${id}`, { method: "DELETE" }),
 };
 
+// Recurring Transactions
+export interface RecurringItem {
+  id: string;
+  amount: number;
+  transaction_type: string;
+  description: string;
+  category: string;
+  wallet_id: string;
+  wallet_name: string;
+  frequency: string;
+  next_run: string;
+  is_active: boolean;
+}
+
+export interface RecurringListResponse {
+  recurring: RecurringItem[];
+}
+
+export const recurringTx = {
+  list: () => request<RecurringListResponse>("/api/recurring/"),
+  create: (data: {
+    amount: number;
+    transaction_type: string;
+    description: string;
+    category: string;
+    wallet_id: string;
+    frequency: string;
+    next_run: string;
+  }) =>
+    request<RecurringItem>("/api/recurring/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: {
+    amount: number;
+    transaction_type: string;
+    description: string;
+    category: string;
+    wallet_id: string;
+    frequency: string;
+    next_run: string;
+    is_active: boolean;
+  }) =>
+    request<RecurringItem>(`/api/recurring/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  toggle: (id: string) =>
+    request<RecurringItem>(`/api/recurring/${id}/toggle`, { method: "PATCH" }),
+  delete: (id: string) =>
+    request<{ message: string }>(`/api/recurring/${id}`, { method: "DELETE" }),
+};
+
 // Wallets
 export interface WalletItem {
   id: string;

@@ -24,6 +24,20 @@ type Category struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type RecurringTransaction struct {
+	ID              pgtype.UUID        `json:"id"`
+	UserID          pgtype.UUID        `json:"user_id"`
+	Amount          int64              `json:"amount"`
+	TransactionType string             `json:"transaction_type"`
+	Description     string             `json:"description"`
+	Category        string             `json:"category"`
+	WalletID        pgtype.UUID        `json:"wallet_id"`
+	Frequency       string             `json:"frequency"`
+	NextRun         pgtype.Date        `json:"next_run"`
+	IsActive        bool               `json:"is_active"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
 type Transaction struct {
 	ID              pgtype.UUID        `json:"id"`
 	UserID          pgtype.UUID        `json:"user_id"`

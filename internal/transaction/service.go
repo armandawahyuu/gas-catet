@@ -251,6 +251,24 @@ func (s *Service) GetMonthlySummary(ctx context.Context, userID pgtype.UUID, yea
 	return summary, nil
 }
 
+// CreateFromRecurring creates a transaction from a recurring template (used by recurring scheduler).
+func (s *Service) CreateFromRecurring(ctx context.Context, userID pgtype.UUID, amount int64, txType, description, category string, walletID pgtype.UUID, txDate time.Time) error {
+	if category == "" {
+		category = "Lainnya"
+	}
+
+	_, err := s.queries.CreateTransaction(ctx, CreateTransactionParams{
+		UserID:          userID,
+		Amount:          amount,
+		TransactionType: txType,
+		Description:     pgtype.Text{String: description, Valid: description != ""},
+		Category:        category,
+		TransactionDate: pgtype.Timestamptz{Time: txDate, Valid: true},
+		WalletID:        walletID,
+	})
+	return err
+}
+
 // Helpers
 
 func parseTransactionDate(dateStr string) (time.Time, error) {
