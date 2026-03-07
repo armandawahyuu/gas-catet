@@ -1,0 +1,43 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script_stop: true
+          script: |
+            cd /home/ubuntu/gas-catet
+
+            # Pull latest code
+            git pull origin main
+
+            # Build Go backend
+            export PATH=$PATH:/usr/local/go/bin
+            go build -o gascatet-api ./cmd/api
+
+            # Run migrations (UP section only)
+            for f in db/migrations/*.sql; do
+              sed -n '/^-- +migrate Up/,/^-- +migrate Down/p' "$f" | head -n -1 | psql 'postgres://gascatet:gascatet2026@localhost:5432/gascatet?sslmode=disable' 2>&1 || true
+            done
+
+            # Build Next.js frontend
+            cd web
+            npm ci --prefer-offline
+            NEXT_PUBLIC_API_URL=http://43.159.45.249 npx next build
+            cd ..
+
+            # Restart services
+            sudo systemctl restart gascatet-api
+            sudo systemctl restart gascatet-web
+
+            echo "Deploy complete!"
