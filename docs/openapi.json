@@ -1,0 +1,553 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "GasCatet API",
+    "description": "Personal finance tracking API with wallets, transactions, categories, transfers, and analytics.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://gascatet.my.id",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email", "password", "name"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 8 },
+          "name": { "type": "string" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "email": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          }
+        }
+      },
+      "CreateTransactionRequest": {
+        "type": "object",
+        "required": ["amount", "transaction_type", "description", "category", "wallet_id", "transaction_date"],
+        "properties": {
+          "amount": { "type": "integer", "format": "int64", "description": "Amount in smallest unit (e.g., 50000 = Rp 50.000)" },
+          "transaction_type": { "type": "string", "enum": ["INCOME", "EXPENSE"] },
+          "description": { "type": "string" },
+          "category": { "type": "string" },
+          "wallet_id": { "type": "string", "format": "uuid" },
+          "transaction_date": { "type": "string", "format": "date", "description": "YYYY-MM-DD" }
+        }
+      },
+      "CreateCategoryRequest": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": { "type": "string", "enum": ["INCOME", "EXPENSE"] }
+        }
+      },
+      "CreateWalletRequest": {
+        "type": "object",
+        "required": ["name", "icon"],
+        "properties": {
+          "name": { "type": "string" },
+          "icon": { "type": "string" }
+        }
+      },
+      "SetBalanceRequest": {
+        "type": "object",
+        "required": ["balance"],
+        "properties": {
+          "balance": { "type": "integer", "format": "int64" }
+        }
+      },
+      "CreateTransferRequest": {
+        "type": "object",
+        "required": ["from_wallet_id", "to_wallet_id", "amount"],
+        "properties": {
+          "from_wallet_id": { "type": "string", "format": "uuid" },
+          "to_wallet_id": { "type": "string", "format": "uuid" },
+          "amount": { "type": "integer", "format": "int64", "minimum": 1 },
+          "note": { "type": "string" }
+        }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" }
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "required": ["current_password", "new_password"],
+        "properties": {
+          "current_password": { "type": "string" },
+          "new_password": { "type": "string", "minLength": 8 }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "security": [],
+        "responses": {
+          "200": { "description": "OK" }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register new user",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "409": { "description": "Email already exists" }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login user",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/user/profile": {
+      "get": {
+        "summary": "Get user profile",
+        "responses": {
+          "200": { "description": "User profile" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "put": {
+        "summary": "Update user profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateProfileRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Profile updated" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/user/password": {
+      "put": {
+        "summary": "Change password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ChangePasswordRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Password changed" },
+          "400": { "description": "Invalid current password" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/user/link-telegram": {
+      "post": {
+        "summary": "Generate Telegram linking token (valid 10 min)",
+        "responses": {
+          "200": { "description": "Link token generated" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/transactions": {
+      "get": {
+        "summary": "List transactions with pagination",
+        "parameters": [
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["INCOME", "EXPENSE"] } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "List of transactions" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "summary": "Create transaction (updates wallet balance)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateTransactionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Transaction created" },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/transactions/summary": {
+      "get": {
+        "summary": "Get monthly transaction summary",
+        "parameters": [
+          { "name": "year", "in": "query", "schema": { "type": "integer" } },
+          { "name": "month", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 12 } }
+        ],
+        "responses": {
+          "200": { "description": "Monthly summary with total income and expense" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/transactions/{id}": {
+      "get": {
+        "summary": "Get transaction by ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Transaction detail" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "put": {
+        "summary": "Update transaction",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateTransactionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Transaction updated" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "delete": {
+        "summary": "Delete transaction (reverses wallet balance)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Transaction deleted" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "summary": "List categories",
+        "parameters": [
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["INCOME", "EXPENSE"] } }
+        ],
+        "responses": {
+          "200": { "description": "List of categories" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "summary": "Create category",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCategoryRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Category created" },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/categories/{id}": {
+      "delete": {
+        "summary": "Delete category",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Category deleted" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/wallets": {
+      "get": {
+        "summary": "List wallets with total balance",
+        "responses": {
+          "200": { "description": "List of wallets" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "summary": "Create wallet",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateWalletRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Wallet created" },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/wallets/{id}": {
+      "put": {
+        "summary": "Update wallet",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateWalletRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Wallet updated" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "patch": {
+        "summary": "Set wallet balance directly",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SetBalanceRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Balance updated" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "delete": {
+        "summary": "Delete wallet",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Wallet deleted" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/transfers": {
+      "get": {
+        "summary": "List transfers with pagination",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "List of transfers" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "summary": "Create transfer between wallets",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateTransferRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Transfer created" },
+          "400": { "description": "Validation error or insufficient funds" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/transfers/{id}": {
+      "delete": {
+        "summary": "Delete transfer",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Transfer deleted" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/analytics/summary": {
+      "get": {
+        "summary": "Monthly analytics summary",
+        "parameters": [
+          { "name": "year", "in": "query", "schema": { "type": "integer" } },
+          { "name": "month", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 12 } }
+        ],
+        "responses": {
+          "200": { "description": "Monthly summary" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/analytics/daily": {
+      "get": {
+        "summary": "Daily breakdown for a month",
+        "parameters": [
+          { "name": "year", "in": "query", "schema": { "type": "integer" } },
+          { "name": "month", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 12 } }
+        ],
+        "responses": {
+          "200": { "description": "Daily breakdown" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/analytics/trend": {
+      "get": {
+        "summary": "Trend data for last N months",
+        "parameters": [
+          { "name": "months", "in": "query", "schema": { "type": "integer", "default": 6 } }
+        ],
+        "responses": {
+          "200": { "description": "Trend data" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/analytics/top-expenses": {
+      "get": {
+        "summary": "Top expenses for a month",
+        "parameters": [
+          { "name": "year", "in": "query", "schema": { "type": "integer" } },
+          { "name": "month", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 12 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "Top expenses" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/analytics/categories": {
+      "get": {
+        "summary": "Category breakdown for a month",
+        "parameters": [
+          { "name": "year", "in": "query", "schema": { "type": "integer" } },
+          { "name": "month", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 12 } }
+        ],
+        "responses": {
+          "200": { "description": "Category breakdown" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/telegram/info": {
+      "get": {
+        "summary": "Get Telegram bot info",
+        "security": [],
+        "responses": {
+          "200": { "description": "Bot info" }
+        }
+      }
+    }
+  }
+}

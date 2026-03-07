@@ -26,7 +26,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(email, password, name);
-      router.push("/dashboard");
+      router.push("/setup");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registrasi gagal");
     } finally {
