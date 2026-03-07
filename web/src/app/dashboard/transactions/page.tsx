@@ -270,7 +270,13 @@ function TransactionForm({
   );
   const [description, setDescription] = useState(initial?.description || "");
   const [category, setCategory] = useState(initial?.category || "Lainnya");
-  const [amount, setAmount] = useState(initial?.amount?.toString() || "");
+  const [amount, setAmount] = useState(
+    initial?.amount ? initial.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") : ""
+  );
+  const formatAmount = (val: string) => {
+    const num = val.replace(/\D/g, "");
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
   const [date, setDate] = useState(
     initial?.transaction_date || new Date().toISOString().split("T")[0]
   );
@@ -444,9 +450,10 @@ function TransactionForm({
               </span>
               <input
                 type="text"
+                inputMode="numeric"
                 value={amount}
                 onChange={(e) =>
-                  setAmount(e.target.value.replace(/[^0-9]/g, ""))
+                  setAmount(formatAmount(e.target.value))
                 }
                 className="neo-input w-full pl-12 pr-4 py-3 text-sm font-mono"
                 placeholder="0"
