@@ -31,6 +31,24 @@ type CreateRequest struct {
 	Type string `json:"type"`
 }
 
+type BudgetResponse struct {
+	ID           string `json:"id"`
+	CategoryName string `json:"category_name"`
+	Amount       int64  `json:"amount"`
+}
+
+type BudgetWithSpent struct {
+	ID           string `json:"id"`
+	CategoryName string `json:"category_name"`
+	Amount       int64  `json:"amount"`
+	Spent        int64  `json:"spent"`
+}
+
+type UpsertBudgetRequest struct {
+	CategoryName string `json:"category_name"`
+	Amount       int64  `json:"amount"`
+}
+
 func NewService(queries *Queries) *Service {
 	return &Service{queries: queries}
 }
@@ -106,6 +124,83 @@ func (s *Service) Delete(ctx context.Context, userID, catID pgtype.UUID) error {
 
 func (s *Service) SeedDefaults(ctx context.Context, userID pgtype.UUID) error {
 	return s.queries.SeedDefaultCategories(ctx, userID)
+}
+
+func (s *Service) UpsertBudget(ctx context.Context, userID pgtype.UUID, req UpsertBudgetRequest) (BudgetResponse, error) {
+	if req.CategoryName == "" {
+		return BudgetResponse{}, ErrNameRequired
+	}
+	if req.Amount <= 0 {
+		return BudgetResponse{}, errors.New("jumlah budget harus lebih dari 0")
+	}
+
+	b, err := s.queries.UpsertBudget(ctx, UpsertBudgetParams{
+		UserID:       userID,
+		CategoryName: req.CategoryName,
+		Amount:       req.Amount,
+	})
+	if err != nil {
+		return BudgetResponse{}, fmt.Errorf("gagal simpan budget: %w", err)
+	}
+
+	return BudgetResponse{
+		ID:           uuidToString(b.ID),
+		CategoryName: b.CategoryName,
+		Amount:       b.Amount,
+	}, nil
+}
+
+func (s *Service) ListBudgets(ctx context.Context, userID pgtype.UUID) ([]BudgetWithSpent, error) {
+	budgets, err := s.queries.ListBudgetsByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("gagal list budget: %w", err)
+	}
+
+	if len(budgets) == 0 {
+		return []BudgetWithSpent{}, nil
+	}
+
+	// Get current month date range (Asia/Jakarta)
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now().In(loc)
+	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, loc)
+	startOfNext := startOfMonth.AddDate(0, 1, 0)
+
+	spent, err := s.queries.GetBudgetSpent(ctx, GetBudgetSpentParams{
+		UserID:            userID,
+		TransactionDate:   pgtype.Timestamptz{Time: startOfMonth, Valid: true},
+		TransactionDate_2: pgtype.Timestamptz{Time: startOfNext, Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("gagal ambil pengeluaran: %w", err)
+	}
+
+	spentMap := make(map[string]int64)
+	for _, s := range spent {
+		spentMap[s.Category] = s.Spent
+	}
+
+	result := make([]BudgetWithSpent, len(budgets))
+	for i, b := range budgets {
+		result[i] = BudgetWithSpent{
+			ID:           uuidToString(b.ID),
+			CategoryName: b.CategoryName,
+			Amount:       b.Amount,
+			Spent:        spentMap[b.CategoryName],
+		}
+	}
+	return result, nil
+}
+
+func (s *Service) DeleteBudget(ctx context.Context, userID, budgetID pgtype.UUID) error {
+	err := s.queries.DeleteBudget(ctx, DeleteBudgetParams{
+		ID:     budgetID,
+		UserID: userID,
+	})
+	if err != nil {
+		return fmt.Errorf("gagal hapus budget: %w", err)
+	}
+	return nil
 }
 
 func uuidToString(u pgtype.UUID) string {

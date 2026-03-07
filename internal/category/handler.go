@@ -75,3 +75,54 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "kategori berhasil dihapus"})
 }
+
+func (h *Handler) UpsertBudget(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	var req UpsertBudgetRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "request body tidak valid"})
+	}
+
+	budget, err := h.service.UpsertBudget(c.Context(), userID, req)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(budget)
+}
+
+func (h *Handler) ListBudgets(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	budgets, err := h.service.ListBudgets(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal ambil budget"})
+	}
+
+	return c.JSON(fiber.Map{"budgets": budgets})
+}
+
+func (h *Handler) DeleteBudget(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	budgetID, err := stringToUUID(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID tidak valid"})
+	}
+
+	if err := h.service.DeleteBudget(c.Context(), userID, budgetID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal hapus budget"})
+	}
+
+	return c.JSON(fiber.Map{"message": "budget berhasil dihapus"})
+}

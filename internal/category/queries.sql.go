@@ -36,6 +36,21 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 	return i, err
 }
 
+const deleteBudget = `-- name: DeleteBudget :exec
+DELETE FROM budgets
+WHERE id = $1 AND user_id = $2
+`
+
+type DeleteBudgetParams struct {
+	ID     pgtype.UUID `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeleteBudget(ctx context.Context, arg DeleteBudgetParams) error {
+	_, err := q.db.Exec(ctx, deleteBudget, arg.ID, arg.UserID)
+	return err
+}
+
 const deleteCategory = `-- name: DeleteCategory :exec
 DELETE FROM categories
 WHERE id = $1 AND user_id = $2
@@ -49,6 +64,83 @@ type DeleteCategoryParams struct {
 func (q *Queries) DeleteCategory(ctx context.Context, arg DeleteCategoryParams) error {
 	_, err := q.db.Exec(ctx, deleteCategory, arg.ID, arg.UserID)
 	return err
+}
+
+const getBudgetSpent = `-- name: GetBudgetSpent :many
+SELECT
+  t.category,
+  COALESCE(SUM(t.amount), 0)::BIGINT AS spent
+FROM transactions t
+WHERE t.user_id = $1
+  AND t.transaction_type = 'EXPENSE'
+  AND t.transaction_date >= $2
+  AND t.transaction_date < $3
+  AND t.category IN (SELECT b.category_name FROM budgets b WHERE b.user_id = $1)
+GROUP BY t.category
+`
+
+type GetBudgetSpentParams struct {
+	UserID            pgtype.UUID        `json:"user_id"`
+	TransactionDate   pgtype.Timestamptz `json:"transaction_date"`
+	TransactionDate_2 pgtype.Timestamptz `json:"transaction_date_2"`
+}
+
+type GetBudgetSpentRow struct {
+	Category string `json:"category"`
+	Spent    int64  `json:"spent"`
+}
+
+func (q *Queries) GetBudgetSpent(ctx context.Context, arg GetBudgetSpentParams) ([]GetBudgetSpentRow, error) {
+	rows, err := q.db.Query(ctx, getBudgetSpent, arg.UserID, arg.TransactionDate, arg.TransactionDate_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBudgetSpentRow
+	for rows.Next() {
+		var i GetBudgetSpentRow
+		if err := rows.Scan(&i.Category, &i.Spent); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBudgetsByUser = `-- name: ListBudgetsByUser :many
+SELECT id, user_id, category_name, amount, created_at
+FROM budgets
+WHERE user_id = $1
+ORDER BY category_name
+`
+
+func (q *Queries) ListBudgetsByUser(ctx context.Context, userID pgtype.UUID) ([]Budget, error) {
+	rows, err := q.db.Query(ctx, listBudgetsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Budget
+	for rows.Next() {
+		var i Budget
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.CategoryName,
+			&i.Amount,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCategoriesByUser = `-- name: ListCategoriesByUser :many
@@ -135,4 +227,30 @@ ON CONFLICT (user_id, name, type) DO NOTHING
 func (q *Queries) SeedDefaultCategories(ctx context.Context, userID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, seedDefaultCategories, userID)
 	return err
+}
+
+const upsertBudget = `-- name: UpsertBudget :one
+INSERT INTO budgets (user_id, category_name, amount)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, category_name) DO UPDATE SET amount = $3
+RETURNING id, user_id, category_name, amount, created_at
+`
+
+type UpsertBudgetParams struct {
+	UserID       pgtype.UUID `json:"user_id"`
+	CategoryName string      `json:"category_name"`
+	Amount       int64       `json:"amount"`
+}
+
+func (q *Queries) UpsertBudget(ctx context.Context, arg UpsertBudgetParams) (Budget, error) {
+	row := q.db.QueryRow(ctx, upsertBudget, arg.UserID, arg.CategoryName, arg.Amount)
+	var i Budget
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CategoryName,
+		&i.Amount,
+		&i.CreatedAt,
+	)
+	return i, err
 }

@@ -8,6 +8,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Budget struct {
+	ID           pgtype.UUID        `json:"id"`
+	UserID       pgtype.UUID        `json:"user_id"`
+	CategoryName string             `json:"category_name"`
+	Amount       int64              `json:"amount"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type Category struct {
 	ID        pgtype.UUID        `json:"id"`
 	UserID    pgtype.UUID        `json:"user_id"`

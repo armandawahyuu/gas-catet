@@ -125,6 +125,11 @@ func main() {
 	catGroup.Post("/", catHandler.Create)
 	catGroup.Delete("/:id", catHandler.Delete)
 
+	budgetGroup := api.Group("/budgets", userHandler.AuthMiddleware)
+	budgetGroup.Get("/", catHandler.ListBudgets)
+	budgetGroup.Post("/", catHandler.UpsertBudget)
+	budgetGroup.Delete("/:id", catHandler.DeleteBudget)
+
 	walGroup := api.Group("/wallets", userHandler.AuthMiddleware)
 	walGroup.Get("/", walHandler.List)
 	walGroup.Post("/", walHandler.Create)

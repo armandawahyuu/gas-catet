@@ -271,6 +271,29 @@ export const categories = {
     request<{ message: string }>(`/api/categories/${id}`, { method: "DELETE" }),
 };
 
+// Budgets
+export interface BudgetItem {
+  id: string;
+  category_name: string;
+  amount: number;
+  spent: number;
+}
+
+export interface BudgetsListResponse {
+  budgets: BudgetItem[];
+}
+
+export const budgets = {
+  list: () => request<BudgetsListResponse>("/api/budgets/"),
+  upsert: (category_name: string, amount: number) =>
+    request<BudgetItem>("/api/budgets/", {
+      method: "POST",
+      body: JSON.stringify({ category_name, amount }),
+    }),
+  delete: (id: string) =>
+    request<{ message: string }>(`/api/budgets/${id}`, { method: "DELETE" }),
+};
+
 // Wallets
 export interface WalletItem {
   id: string;
