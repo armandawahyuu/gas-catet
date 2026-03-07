@@ -89,6 +89,31 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 	return c.JSON(w)
 }
 
+func (h *Handler) SetBalance(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	walletID, err := stringToUUID(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID tidak valid"})
+	}
+
+	var req struct {
+		Balance int64 `json:"balance"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "request body tidak valid"})
+	}
+
+	if err := h.service.SetBalance(c.Context(), userID, walletID, req.Balance); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal atur saldo"})
+	}
+
+	return c.JSON(fiber.Map{"message": "saldo berhasil diatur"})
+}
+
 func (h *Handler) Delete(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(pgtype.UUID)
 	if !ok {

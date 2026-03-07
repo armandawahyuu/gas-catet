@@ -137,6 +137,23 @@ func (q *Queries) SeedDefaultWallets(ctx context.Context, userID pgtype.UUID) er
 	return err
 }
 
+const setWalletBalance = `-- name: SetWalletBalance :exec
+UPDATE wallets
+SET balance = $3
+WHERE id = $1 AND user_id = $2
+`
+
+type SetWalletBalanceParams struct {
+	ID      pgtype.UUID `json:"id"`
+	UserID  pgtype.UUID `json:"user_id"`
+	Balance int64       `json:"balance"`
+}
+
+func (q *Queries) SetWalletBalance(ctx context.Context, arg SetWalletBalanceParams) error {
+	_, err := q.db.Exec(ctx, setWalletBalance, arg.ID, arg.UserID, arg.Balance)
+	return err
+}
+
 const updateWallet = `-- name: UpdateWallet :one
 UPDATE wallets
 SET name = $3, icon = $4

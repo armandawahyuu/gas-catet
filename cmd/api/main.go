@@ -129,6 +129,7 @@ func main() {
 	walGroup.Get("/", walHandler.List)
 	walGroup.Post("/", walHandler.Create)
 	walGroup.Put("/:id", walHandler.Update)
+	walGroup.Patch("/:id/balance", walHandler.SetBalance)
 	walGroup.Delete("/:id", walHandler.Delete)
 
 	analyticsGroup := api.Group("/analytics", userHandler.AuthMiddleware)

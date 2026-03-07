@@ -143,6 +143,14 @@ func (s *Service) UpdateBalance(ctx context.Context, walletID pgtype.UUID, delta
 	})
 }
 
+func (s *Service) SetBalance(ctx context.Context, userID, walletID pgtype.UUID, balance int64) error {
+	return s.queries.SetWalletBalance(ctx, SetWalletBalanceParams{
+		ID:      walletID,
+		UserID:  userID,
+		Balance: balance,
+	})
+}
+
 func (s *Service) GetTotalBalance(ctx context.Context, userID pgtype.UUID) (int64, error) {
 	return s.queries.GetWalletsTotalBalance(ctx, userID)
 }

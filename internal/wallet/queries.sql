@@ -29,6 +29,11 @@ UPDATE wallets
 SET balance = balance + $2
 WHERE id = $1;
 
+-- name: SetWalletBalance :exec
+UPDATE wallets
+SET balance = $3
+WHERE id = $1 AND user_id = $2;
+
 -- name: GetWalletsTotalBalance :one
 SELECT COALESCE(SUM(balance), 0)::BIGINT AS total
 FROM wallets

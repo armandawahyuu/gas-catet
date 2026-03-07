@@ -296,6 +296,11 @@ export const wallets = {
       method: "PUT",
       body: JSON.stringify({ name, icon }),
     }),
+  setBalance: (id: string, balance: number) =>
+    request<{ message: string }>(`/api/wallets/${id}/balance`, {
+      method: "PATCH",
+      body: JSON.stringify({ balance }),
+    }),
   delete: (id: string) =>
     request<{ message: string }>(`/api/wallets/${id}`, { method: "DELETE" }),
 };
