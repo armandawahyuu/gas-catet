@@ -77,14 +77,14 @@ export default function WalletsPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {walletList.length >= 2 && (
             <button
               onClick={() => setShowTransfer(true)}
-              className="neo-btn px-5 py-3 flex items-center gap-2 text-sm"
+              className="neo-btn px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
               style={{ background: "#FFCC00", color: "#121212" }}
             >
-              <ArrowRightLeft size={18} strokeWidth={3} />
+              <ArrowRightLeft size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" />
               Transfer
             </button>
           )}
@@ -93,10 +93,10 @@ export default function WalletsPage() {
               setEditWallet(null);
               setShowForm(true);
             }}
-            className="neo-btn px-5 py-3 flex items-center gap-2 text-white text-sm"
+            className="neo-btn px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-1.5 sm:gap-2 text-white text-xs sm:text-sm"
             style={{ background: "#00C781" }}
           >
-            <Plus size={18} strokeWidth={3} />
+            <Plus size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" />
             Tambah Dompet
           </button>
         </div>
