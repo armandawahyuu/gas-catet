@@ -26,6 +26,8 @@ type TransactionResponse struct {
 	TransactionType string `json:"transaction_type"`
 	Description     string `json:"description"`
 	Category        string `json:"category"`
+	WalletID        string `json:"wallet_id"`
+	WalletName      string `json:"wallet_name"`
 	TransactionDate string `json:"transaction_date"`
 	CreatedAt       string `json:"created_at"`
 }
@@ -35,6 +37,7 @@ type CreateRequest struct {
 	TransactionType string `json:"transaction_type"`
 	Description     string `json:"description"`
 	Category        string `json:"category"`
+	WalletID        string `json:"wallet_id"`
 	TransactionDate string `json:"transaction_date"`
 }
 
@@ -43,6 +46,7 @@ type UpdateRequest struct {
 	TransactionType string `json:"transaction_type"`
 	Description     string `json:"description"`
 	Category        string `json:"category"`
+	WalletID        string `json:"wallet_id"`
 	TransactionDate string `json:"transaction_date"`
 }
 
@@ -80,6 +84,11 @@ func (s *Service) Create(ctx context.Context, userID pgtype.UUID, req CreateRequ
 		category = "Lainnya"
 	}
 
+	var walletUUID pgtype.UUID
+	if req.WalletID != "" {
+		walletUUID, _ = stringToUUID(req.WalletID)
+	}
+
 	row, err := s.queries.CreateTransaction(ctx, CreateTransactionParams{
 		UserID:          userID,
 		Amount:          req.Amount,
@@ -87,6 +96,7 @@ func (s *Service) Create(ctx context.Context, userID pgtype.UUID, req CreateRequ
 		Description:     pgtype.Text{String: req.Description, Valid: req.Description != ""},
 		Category:        category,
 		TransactionDate: pgtype.Timestamptz{Time: txDate, Valid: true},
+		WalletID:        walletUUID,
 	})
 	if err != nil {
 		return TransactionResponse{}, fmt.Errorf("gagal buat transaksi: %w", err)
@@ -177,6 +187,11 @@ func (s *Service) Update(ctx context.Context, userID, txID pgtype.UUID, req Upda
 		updateCategory = "Lainnya"
 	}
 
+	var walletUUID pgtype.UUID
+	if req.WalletID != "" {
+		walletUUID, _ = stringToUUID(req.WalletID)
+	}
+
 	row, err := s.queries.UpdateTransaction(ctx, UpdateTransactionParams{
 		ID:              txID,
 		UserID:          userID,
@@ -185,6 +200,7 @@ func (s *Service) Update(ctx context.Context, userID, txID pgtype.UUID, req Upda
 		Description:     pgtype.Text{String: req.Description, Valid: req.Description != ""},
 		Category:        updateCategory,
 		TransactionDate: pgtype.Timestamptz{Time: txDate, Valid: true},
+		WalletID:        walletUUID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -286,6 +302,7 @@ func createRowToResponse(tx CreateTransactionRow) TransactionResponse {
 		TransactionType: tx.TransactionType,
 		Description:     desc,
 		Category:        tx.Category,
+		WalletID:        uuidToString(tx.WalletID),
 		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
 		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
 	}
@@ -302,6 +319,8 @@ func getRowToResponse(tx GetTransactionByIDRow) TransactionResponse {
 		TransactionType: tx.TransactionType,
 		Description:     desc,
 		Category:        tx.Category,
+		WalletID:        uuidToString(tx.WalletID),
+		WalletName:      tx.WalletName,
 		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
 		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
 	}
@@ -318,6 +337,7 @@ func updateRowToResponse(tx UpdateTransactionRow) TransactionResponse {
 		TransactionType: tx.TransactionType,
 		Description:     desc,
 		Category:        tx.Category,
+		WalletID:        uuidToString(tx.WalletID),
 		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
 		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
 	}
@@ -334,6 +354,8 @@ func listRowToResponse(tx ListTransactionsByUserRow) TransactionResponse {
 		TransactionType: tx.TransactionType,
 		Description:     desc,
 		Category:        tx.Category,
+		WalletID:        uuidToString(tx.WalletID),
+		WalletName:      tx.WalletName,
 		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
 		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
 	}
@@ -350,6 +372,8 @@ func listTypeRowToResponse(tx ListTransactionsByUserAndTypeRow) TransactionRespo
 		TransactionType: tx.TransactionType,
 		Description:     desc,
 		Category:        tx.Category,
+		WalletID:        uuidToString(tx.WalletID),
+		WalletName:      tx.WalletName,
 		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
 		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
 	}

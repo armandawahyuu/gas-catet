@@ -11,6 +11,7 @@ import (
 	"gas-catet/internal/telegram"
 	"gas-catet/internal/transaction"
 	"gas-catet/internal/user"
+	"gas-catet/internal/wallet"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -55,7 +56,6 @@ func main() {
 
 	txQueries := transaction.New(pool)
 	txService := transaction.NewService(txQueries)
-	txHandler := transaction.NewHandler(txService)
 
 	analyticsQueries := analytics.New(pool)
 	analyticsSvc := analytics.NewService(analyticsQueries)
@@ -65,9 +65,16 @@ func main() {
 	catService := category.NewService(catQueries)
 	catHandler := category.NewHandler(catService)
 
+	walQueries := wallet.New(pool)
+	walService := wallet.NewService(walQueries)
+	walHandler := wallet.NewHandler(walService)
+
+	txHandler := transaction.NewHandler(txService, walService)
+
 	// Seed default categories on registration
 	userHandler.SetOnRegister(func(regCtx context.Context, userID pgtype.UUID) {
 		_ = catService.SeedDefaults(regCtx, userID)
+		_ = walService.SeedDefaults(regCtx, userID)
 	})
 
 	// Telegram Bot (optional - only if token is set)
@@ -75,7 +82,7 @@ func main() {
 	if telegramToken != "" {
 		bot := telegram.NewBotClient(telegramToken)
 		fsm := telegram.NewFSM()
-		tgHandler = telegram.NewHandler(bot, fsm, catService, userService, txService, txQueries)
+		tgHandler = telegram.NewHandler(bot, fsm, catService, userService, txService, txQueries, walService)
 		log.Println("Telegram Bot enabled")
 	} else {
 		log.Println("Telegram Bot disabled (TELEGRAM_BOT_TOKEN not set)")
@@ -117,6 +124,12 @@ func main() {
 	catGroup.Get("/", catHandler.List)
 	catGroup.Post("/", catHandler.Create)
 	catGroup.Delete("/:id", catHandler.Delete)
+
+	walGroup := api.Group("/wallets", userHandler.AuthMiddleware)
+	walGroup.Get("/", walHandler.List)
+	walGroup.Post("/", walHandler.Create)
+	walGroup.Put("/:id", walHandler.Update)
+	walGroup.Delete("/:id", walHandler.Delete)
 
 	analyticsGroup := api.Group("/analytics", userHandler.AuthMiddleware)
 	analyticsGroup.Get("/summary", analyticsHandler.Summary)

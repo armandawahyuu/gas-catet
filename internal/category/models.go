@@ -25,6 +25,7 @@ type Transaction struct {
 	TransactionDate pgtype.Timestamptz `json:"transaction_date"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	Category        string             `json:"category"`
+	WalletID        pgtype.UUID        `json:"wallet_id"`
 }
 
 type User struct {
@@ -34,4 +35,13 @@ type User struct {
 	TelegramID   pgtype.Int8        `json:"telegram_id"`
 	Name         string             `json:"name"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
+type Wallet struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Name      string             `json:"name"`
+	Icon      string             `json:"icon"`
+	Balance   int64              `json:"balance"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }

@@ -11,6 +11,7 @@ import (
 	"gas-catet/internal/category"
 	"gas-catet/internal/transaction"
 	"gas-catet/internal/user"
+	"gas-catet/internal/wallet"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -23,9 +24,10 @@ type Handler struct {
 	userSvc   *user.Service
 	txSvc     *transaction.Service
 	txQueries *transaction.Queries
+	walSvc    *wallet.Service
 }
 
-func NewHandler(bot *BotClient, fsm *FSM, catSvc *category.Service, userSvc *user.Service, txSvc *transaction.Service, txQueries *transaction.Queries) *Handler {
+func NewHandler(bot *BotClient, fsm *FSM, catSvc *category.Service, userSvc *user.Service, txSvc *transaction.Service, txQueries *transaction.Queries, walSvc *wallet.Service) *Handler {
 	return &Handler{
 		bot:       bot,
 		fsm:       fsm,
@@ -33,6 +35,7 @@ func NewHandler(bot *BotClient, fsm *FSM, catSvc *category.Service, userSvc *use
 		userSvc:   userSvc,
 		txSvc:     txSvc,
 		txQueries: txQueries,
+		walSvc:    walSvc,
 	}
 }
 
@@ -125,6 +128,8 @@ func (h *Handler) handleCallback(cb *CallbackQuery) {
 		h.startTransaction(chatID, cb.From.ID, TypeIncome)
 	case strings.HasPrefix(data, "cat_"):
 		h.handleCategorySelection(chatID, cb.From.ID, strings.TrimPrefix(data, "cat_"))
+	case strings.HasPrefix(data, "wal_"):
+		h.handleWalletSelection(chatID, cb.From.ID, strings.TrimPrefix(data, "wal_"))
 	case data == "date_today":
 		h.handleDateSelection(chatID, cb.From.ID, "today")
 	case data == "date_yesterday":
@@ -255,7 +260,7 @@ func (h *Handler) handleNameInput(chatID, telegramID int64, text string) {
 	})
 }
 
-// State 4: Got amount, ask for date
+// State 4: Got amount, ask for wallet
 func (h *Handler) handleAmountInput(chatID, telegramID int64, text string) {
 	// Clean number: remove dots, commas, spaces, "rp", "Rp"
 	cleaned := text
@@ -272,10 +277,81 @@ func (h *Handler) handleAmountInput(chatID, telegramID int64, text string) {
 	}
 
 	session := h.fsm.GetSession(chatID)
-	session.State = StateWaitingDate
+	session.State = StateWaitingWallet
 	session.Amount = amount
 	h.fsm.SetSession(chatID, session)
 
+	// Show wallet selection
+	ctx := context.Background()
+	userRow, err := h.getUserByTelegramID(ctx, telegramID)
+	if err != nil {
+		h.sendMessage(chatID, "⚠️ Gagal ambil data user.")
+		h.fsm.ResetSession(chatID)
+		return
+	}
+
+	wallets, err := h.walSvc.List(ctx, userRow.ID)
+	if err != nil || len(wallets) == 0 {
+		// No wallets, skip to date
+		session.State = StateWaitingDate
+		h.fsm.SetSession(chatID, session)
+		h.showDateSelection(chatID)
+		return
+	}
+
+	buttons := make([][]InlineKeyboardButton, 0, len(wallets)/2+2)
+	row := make([]InlineKeyboardButton, 0, 2)
+	for _, w := range wallets {
+		row = append(row, InlineKeyboardButton{Text: w.Icon + " " + w.Name, CallbackData: "wal_" + w.ID})
+		if len(row) == 2 {
+			buttons = append(buttons, row)
+			row = make([]InlineKeyboardButton, 0, 2)
+		}
+	}
+	if len(row) > 0 {
+		buttons = append(buttons, row)
+	}
+	buttons = append(buttons, []InlineKeyboardButton{{Text: "⏭️ Skip", CallbackData: "wal_skip"}})
+	buttons = append(buttons, []InlineKeyboardButton{{Text: "❌ Batal", CallbackData: "cancel"}})
+
+	_ = h.bot.SendMessage(SendMessageRequest{
+		ChatID: chatID,
+		Text:   "Dari dompet mana?",
+		ReplyMarkup: &ReplyMarkup{
+			InlineKeyboard: buttons,
+		},
+	})
+}
+
+// Wallet selected, show date
+func (h *Handler) handleWalletSelection(chatID, telegramID int64, walletData string) {
+	session := h.fsm.GetSession(chatID)
+	if session.State != StateWaitingWallet {
+		h.sendMainMenu(chatID)
+		return
+	}
+
+	if walletData != "skip" {
+		session.WalletID = walletData
+		// Get wallet name for display
+		ctx := context.Background()
+		userRow, err := h.getUserByTelegramID(ctx, telegramID)
+		if err == nil {
+			var wID pgtype.UUID
+			_ = wID.Scan(walletData)
+			w, err := h.walSvc.GetByID(ctx, userRow.ID, wID)
+			if err == nil {
+				session.WalletName = w.Name
+			}
+		}
+	}
+
+	session.State = StateWaitingDate
+	h.fsm.SetSession(chatID, session)
+	h.showDateSelection(chatID)
+}
+
+func (h *Handler) showDateSelection(chatID int64) {
 	_ = h.bot.SendMessage(SendMessageRequest{
 		ChatID: chatID,
 		Text:   "Kapan transaksinya?",
@@ -328,6 +404,7 @@ func (h *Handler) handleDateSelection(chatID, telegramID int64, dateChoice strin
 		TransactionType: session.TransactionType,
 		Description:     session.Description,
 		Category:        session.Category,
+		WalletID:        session.WalletID,
 		TransactionDate: txDate,
 	})
 
@@ -336,6 +413,17 @@ func (h *Handler) handleDateSelection(chatID, telegramID int64, dateChoice strin
 		h.sendMessage(chatID, "⚠️ Gagal nyimpen transaksi. Coba lagi ya bos.")
 		h.fsm.ResetSession(chatID)
 		return
+	}
+
+	// Update wallet balance
+	if session.WalletID != "" {
+		var wID pgtype.UUID
+		_ = wID.Scan(session.WalletID)
+		delta := -session.Amount
+		if session.TransactionType == TypeIncome {
+			delta = session.Amount
+		}
+		_ = h.walSvc.UpdateBalance(ctx, wID, delta)
 	}
 
 	// Format the amount
@@ -348,12 +436,18 @@ func (h *Handler) handleDateSelection(chatID, telegramID int64, dateChoice strin
 		typeLabel = "Pemasukan"
 	}
 
-	msg := fmt.Sprintf("✅ Gas! Udah dicatet bos!\n\n%s %s\n📝 %s\n🏷️ %s\n💵 %s\n📅 %s",
+	walletLine := ""
+	if session.WalletName != "" {
+		walletLine = fmt.Sprintf("\n👛 %s", session.WalletName)
+	}
+
+	msg := fmt.Sprintf("✅ Gas! Udah dicatet bos!\n\n%s %s\n📝 %s\n🏷️ %s\n💵 %s\n📅 %s%s",
 		typeEmoji, typeLabel,
 		session.Description,
 		session.Category,
 		amountStr,
 		txDate,
+		walletLine,
 	)
 
 	h.sendMessage(chatID, msg)
@@ -410,6 +504,7 @@ func (h *Handler) handleCustomDateInput(chatID, telegramID int64, text string) {
 		TransactionType: session.TransactionType,
 		Description:     session.Description,
 		Category:        session.Category,
+		WalletID:        session.WalletID,
 		TransactionDate: txDate,
 	})
 
@@ -420,6 +515,17 @@ func (h *Handler) handleCustomDateInput(chatID, telegramID int64, text string) {
 		return
 	}
 
+	// Update wallet balance
+	if session.WalletID != "" {
+		var wID pgtype.UUID
+		_ = wID.Scan(session.WalletID)
+		delta := -session.Amount
+		if session.TransactionType == TypeIncome {
+			delta = session.Amount
+		}
+		_ = h.walSvc.UpdateBalance(ctx, wID, delta)
+	}
+
 	amountStr := formatRupiah(session.Amount)
 	typeEmoji := "💸"
 	typeLabel := "Pengeluaran"
@@ -428,12 +534,18 @@ func (h *Handler) handleCustomDateInput(chatID, telegramID int64, text string) {
 		typeLabel = "Pemasukan"
 	}
 
-	msg := fmt.Sprintf("✅ Gas! Udah dicatet bos!\n\n%s %s\n📝 %s\n🏷️ %s\n💵 %s\n📅 %s",
+	walletLine := ""
+	if session.WalletName != "" {
+		walletLine = fmt.Sprintf("\n👛 %s", session.WalletName)
+	}
+
+	msg := fmt.Sprintf("✅ Gas! Udah dicatet bos!\n\n%s %s\n📝 %s\n🏷️ %s\n💵 %s\n📅 %s%s",
 		typeEmoji, typeLabel,
 		session.Description,
 		session.Category,
 		amountStr,
 		txDate,
+		walletLine,
 	)
 
 	h.sendMessage(chatID, msg)

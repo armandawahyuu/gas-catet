@@ -4,8 +4,10 @@ import { useEffect, useState, useCallback } from "react";
 import {
   transactions as txApi,
   categories as categoriesApi,
+  wallets as walletsApi,
   type CategoryItem2,
   type Transaction,
+  type WalletItem,
 } from "@/lib/api";
 import { formatRupiah, formatDate } from "@/lib/utils";
 import {
@@ -140,7 +142,8 @@ export default function TransactionsPage() {
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{tx.description}</div>
                 <div className="text-xs" style={{ color: "#999" }}>
-                  {formatDate(tx.transaction_date)} · {tx.category || "Lainnya"} ·{" "}
+                  {formatDate(tx.transaction_date)} · {tx.category || "Lainnya"}
+                  {tx.wallet_name ? ` · ${tx.wallet_name}` : ""} ·{" "}
                   {tx.transaction_type === "INCOME" ? "Pemasukan" : "Pengeluaran"}
                 </div>
               </div>
@@ -271,9 +274,23 @@ function TransactionForm({
   const [date, setDate] = useState(
     initial?.transaction_date || new Date().toISOString().split("T")[0]
   );
+  const [walletId, setWalletId] = useState(initial?.wallet_id || "");
+  const [walletOptions, setWalletOptions] = useState<WalletItem[]>([]);
   const [categoryOptions, setCategoryOptions] = useState<CategoryItem2[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const loadWallets = async () => {
+      try {
+        const res = await walletsApi.list();
+        setWalletOptions(res.wallets || []);
+      } catch {
+        setWalletOptions([]);
+      }
+    };
+    loadWallets();
+  }, []);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -308,6 +325,7 @@ function TransactionForm({
         description,
         category,
         transaction_date: date,
+        wallet_id: walletId || undefined,
       };
       if (isEdit && initial) {
         await txApi.update(initial.id, data);
@@ -449,6 +467,36 @@ function TransactionForm({
               required
             />
           </div>
+
+          {/* Wallet */}
+          {walletOptions.length > 0 && (
+            <div>
+              <label className="block font-heading text-xs font-bold mb-2 uppercase tracking-wider">
+                Dompet
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWalletId("")}
+                  className={`neo-btn px-3 py-1.5 text-xs ${!walletId ? "text-white" : ""}`}
+                  style={{ background: !walletId ? "#121212" : "#FFFFFF" }}
+                >
+                  Tanpa Dompet
+                </button>
+                {walletOptions.map((w) => (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => setWalletId(w.id)}
+                    className={`neo-btn px-3 py-1.5 text-xs ${walletId === w.id ? "text-white" : ""}`}
+                    style={{ background: walletId === w.id ? "#FFCC00" : "#FFFFFF", color: walletId === w.id ? "#121212" : undefined }}
+                  >
+                    {w.icon} {w.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"

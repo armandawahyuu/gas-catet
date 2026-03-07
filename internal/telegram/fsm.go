@@ -13,6 +13,7 @@ const (
 	StateWaitingAmount     = 3
 	StateWaitingDate       = 4
 	StateWaitingCustomDate = 5
+	StateWaitingWallet     = 6
 )
 
 // Transaction type constants
@@ -27,6 +28,8 @@ type UserSession struct {
 	Category        string
 	Description     string
 	Amount          int64
+	WalletID        string
+	WalletName      string
 	UpdatedAt       time.Time
 }
 

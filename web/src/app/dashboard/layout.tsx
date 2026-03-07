@@ -14,12 +14,14 @@ import {
   Zap,
   Menu,
   X,
+  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/transactions", label: "Transaksi", icon: Receipt },
+  { href: "/dashboard/wallets", label: "Dompet", icon: Wallet },
   { href: "/dashboard/analytics", label: "Analitik", icon: BarChart3 },
   { href: "/dashboard/telegram", label: "Telegram", icon: Link2 },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },

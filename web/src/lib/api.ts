@@ -84,6 +84,8 @@ export interface Transaction {
   description: string;
   category: string;
   transaction_date: string;
+  wallet_id: string;
+  wallet_name: string;
   created_at: string;
 }
 
@@ -112,6 +114,7 @@ export const transactions = {
     description: string;
     category: string;
     transaction_date: string;
+    wallet_id?: string;
   }) =>
     request<Transaction>("/api/transactions/", {
       method: "POST",
@@ -125,6 +128,7 @@ export const transactions = {
       description: string;
       category: string;
       transaction_date: string;
+      wallet_id?: string;
     }
   ) =>
     request<Transaction>(`/api/transactions/${id}`, {
@@ -265,6 +269,35 @@ export const categories = {
     }),
   delete: (id: string) =>
     request<{ message: string }>(`/api/categories/${id}`, { method: "DELETE" }),
+};
+
+// Wallets
+export interface WalletItem {
+  id: string;
+  name: string;
+  icon: string;
+  balance: number;
+}
+
+export interface WalletsListResponse {
+  wallets: WalletItem[];
+  total_balance: number;
+}
+
+export const wallets = {
+  list: () => request<WalletsListResponse>("/api/wallets/"),
+  create: (name: string, icon: string) =>
+    request<WalletItem>("/api/wallets/", {
+      method: "POST",
+      body: JSON.stringify({ name, icon }),
+    }),
+  update: (id: string, name: string, icon: string) =>
+    request<WalletItem>(`/api/wallets/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ name, icon }),
+    }),
+  delete: (id: string) =>
+    request<{ message: string }>(`/api/wallets/${id}`, { method: "DELETE" }),
 };
 
 // User profile update

@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"context"
 	"strconv"
 	"time"
 
@@ -8,12 +9,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Handler struct {
-	service *Service
+// WalletBalanceUpdater abstracts wallet balance operations to avoid circular imports
+type WalletBalanceUpdater interface {
+	UpdateBalance(ctx context.Context, walletID pgtype.UUID, delta int64) error
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+type Handler struct {
+	service    *Service
+	walUpdater WalletBalanceUpdater
+}
+
+func NewHandler(service *Service, walUpdater WalletBalanceUpdater) *Handler {
+	return &Handler{service: service, walUpdater: walUpdater}
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {
@@ -40,6 +47,18 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		default:
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal buat transaksi"})
+		}
+	}
+
+	// Update wallet balance
+	if req.WalletID != "" && h.walUpdater != nil {
+		walUUID, _ := stringToUUID(req.WalletID)
+		if walUUID.Valid {
+			delta := req.Amount
+			if req.TransactionType == "EXPENSE" {
+				delta = -delta
+			}
+			_ = h.walUpdater.UpdateBalance(c.Context(), walUUID, delta)
 		}
 	}
 
@@ -129,6 +148,21 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 	txID, err := stringToUUID(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID transaksi tidak valid"})
+	}
+
+	// Get transaction first to reverse wallet balance
+	if h.walUpdater != nil {
+		tx, getErr := h.service.GetByID(c.Context(), userID, txID)
+		if getErr == nil && tx.WalletID != "" {
+			walUUID, _ := stringToUUID(tx.WalletID)
+			if walUUID.Valid {
+				delta := -tx.Amount
+				if tx.TransactionType == "EXPENSE" {
+					delta = tx.Amount
+				}
+				_ = h.walUpdater.UpdateBalance(c.Context(), walUUID, delta)
+			}
+		}
 	}
 
 	if err := h.service.Delete(c.Context(), userID, txID); err != nil {
