@@ -125,57 +125,60 @@ export default function TransactionsPage() {
       ) : (
         <div className="space-y-3">
           {txList.map((tx) => (
-            <div key={tx.id} className="neo-card p-4 flex items-center gap-4">
-              <div
-                className="w-11 h-11 flex items-center justify-center neo-border flex-shrink-0"
-                style={{
-                  background:
-                    tx.transaction_type === "INCOME" ? "#00C781" : "#FF3B30",
-                }}
-              >
-                {tx.transaction_type === "INCOME" ? (
-                  <ArrowUpRight size={20} color="white" strokeWidth={3} />
-                ) : (
-                  <ArrowDownRight size={20} color="white" strokeWidth={3} />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{tx.description}</div>
-                <div className="text-xs" style={{ color: "#999" }}>
-                  {formatDate(tx.transaction_date)} · {tx.category || "Lainnya"}
-                  {tx.wallet_name ? ` · ${tx.wallet_name}` : ""} ·{" "}
-                  {tx.transaction_type === "INCOME" ? "Pemasukan" : "Pengeluaran"}
-                </div>
-              </div>
-              <div
-                className="font-mono text-lg font-bold whitespace-nowrap"
-                style={{
-                  color:
-                    tx.transaction_type === "INCOME" ? "#00C781" : "#FF3B30",
-                }}
-              >
-                {tx.transaction_type === "INCOME" ? "+" : "-"}
-                {formatRupiah(tx.amount)}
-              </div>
-              <div className="flex gap-1 flex-shrink-0">
-                <button
-                  onClick={() => {
-                    setEditTx(tx);
-                    setShowForm(true);
+            <div key={tx.id} className="neo-card p-4">
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center neo-border flex-shrink-0"
+                  style={{
+                    background:
+                      tx.transaction_type === "INCOME" ? "#00C781" : "#FF3B30",
                   }}
-                  className="p-2 hover:bg-gray-100 transition-colors"
-                  title="Edit"
                 >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  onClick={() => setDeleteConfirm(tx.id)}
-                  className="p-2 hover:bg-gray-100 transition-colors"
-                  style={{ color: "#FF3B30" }}
-                  title="Hapus"
-                >
-                  <Trash2 size={16} />
-                </button>
+                  {tx.transaction_type === "INCOME" ? (
+                    <ArrowUpRight size={18} color="white" strokeWidth={3} />
+                  ) : (
+                    <ArrowDownRight size={18} color="white" strokeWidth={3} />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-medium text-sm sm:text-base truncate">{tx.description}</div>
+                    <div
+                      className="font-mono text-sm sm:text-lg font-bold whitespace-nowrap flex-shrink-0"
+                      style={{
+                        color:
+                          tx.transaction_type === "INCOME" ? "#00C781" : "#FF3B30",
+                      }}
+                    >
+                      {tx.transaction_type === "INCOME" ? "+" : "-"}
+                      {formatRupiah(tx.amount)}
+                    </div>
+                  </div>
+                  <div className="text-xs mt-0.5" style={{ color: "#999" }}>
+                    {formatDate(tx.transaction_date)} · {tx.category || "Lainnya"}
+                    {tx.wallet_name ? ` · ${tx.wallet_name}` : ""}
+                  </div>
+                </div>
+                <div className="flex gap-0.5 flex-shrink-0 -mt-0.5">
+                  <button
+                    onClick={() => {
+                      setEditTx(tx);
+                      setShowForm(true);
+                    }}
+                    className="p-1.5 hover:bg-gray-100 transition-colors"
+                    title="Edit"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm(tx.id)}
+                    className="p-1.5 hover:bg-gray-100 transition-colors"
+                    style={{ color: "#FF3B30" }}
+                    title="Hapus"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
