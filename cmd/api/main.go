@@ -124,6 +124,7 @@ func main() {
 	txGroup.Post("/", txHandler.Create)
 	txGroup.Get("/", txHandler.List)
 	txGroup.Get("/summary", txHandler.MonthlySummary)
+	txGroup.Get("/export", txHandler.ExportCSV)
 	txGroup.Get("/:id", txHandler.GetByID)
 	txGroup.Put("/:id", txHandler.Update)
 	txGroup.Delete("/:id", txHandler.Delete)

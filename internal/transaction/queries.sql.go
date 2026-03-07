@@ -286,6 +286,130 @@ func (q *Queries) ListTransactionsByUserAndType(ctx context.Context, arg ListTra
 	return items, nil
 }
 
+const listTransactionsForExport = `-- name: ListTransactionsForExport :many
+SELECT t.id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, COALESCE(w.name, '') AS wallet_name
+FROM transactions t
+LEFT JOIN wallets w ON t.wallet_id = w.id
+WHERE t.user_id = $1
+  AND t.transaction_date >= $2
+  AND t.transaction_date < $3
+ORDER BY t.transaction_date ASC, t.created_at ASC
+`
+
+type ListTransactionsForExportParams struct {
+	UserID            pgtype.UUID        `json:"user_id"`
+	TransactionDate   pgtype.Timestamptz `json:"transaction_date"`
+	TransactionDate_2 pgtype.Timestamptz `json:"transaction_date_2"`
+}
+
+type ListTransactionsForExportRow struct {
+	ID              pgtype.UUID        `json:"id"`
+	Amount          int64              `json:"amount"`
+	TransactionType string             `json:"transaction_type"`
+	Description     pgtype.Text        `json:"description"`
+	Category        string             `json:"category"`
+	TransactionDate pgtype.Timestamptz `json:"transaction_date"`
+	WalletName      string             `json:"wallet_name"`
+}
+
+func (q *Queries) ListTransactionsForExport(ctx context.Context, arg ListTransactionsForExportParams) ([]ListTransactionsForExportRow, error) {
+	rows, err := q.db.Query(ctx, listTransactionsForExport, arg.UserID, arg.TransactionDate, arg.TransactionDate_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTransactionsForExportRow
+	for rows.Next() {
+		var i ListTransactionsForExportRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Amount,
+			&i.TransactionType,
+			&i.Description,
+			&i.Category,
+			&i.TransactionDate,
+			&i.WalletName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchTransactions = `-- name: SearchTransactions :many
+SELECT t.id, t.user_id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.wallet_id, t.created_at, COALESCE(w.name, '') AS wallet_name
+FROM transactions t
+LEFT JOIN wallets w ON t.wallet_id = w.id
+WHERE t.user_id = $1
+  AND (
+    t.description ILIKE '%' || $2 || '%'
+    OR t.category ILIKE '%' || $2 || '%'
+    OR COALESCE(w.name, '') ILIKE '%' || $2 || '%'
+  )
+ORDER BY t.transaction_date DESC, t.created_at DESC
+LIMIT $3 OFFSET $4
+`
+
+type SearchTransactionsParams struct {
+	UserID  pgtype.UUID `json:"user_id"`
+	Column2 pgtype.Text `json:"column_2"`
+	Limit   int32       `json:"limit"`
+	Offset  int32       `json:"offset"`
+}
+
+type SearchTransactionsRow struct {
+	ID              pgtype.UUID        `json:"id"`
+	UserID          pgtype.UUID        `json:"user_id"`
+	Amount          int64              `json:"amount"`
+	TransactionType string             `json:"transaction_type"`
+	Description     pgtype.Text        `json:"description"`
+	Category        string             `json:"category"`
+	TransactionDate pgtype.Timestamptz `json:"transaction_date"`
+	WalletID        pgtype.UUID        `json:"wallet_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	WalletName      string             `json:"wallet_name"`
+}
+
+func (q *Queries) SearchTransactions(ctx context.Context, arg SearchTransactionsParams) ([]SearchTransactionsRow, error) {
+	rows, err := q.db.Query(ctx, searchTransactions,
+		arg.UserID,
+		arg.Column2,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchTransactionsRow
+	for rows.Next() {
+		var i SearchTransactionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Amount,
+			&i.TransactionType,
+			&i.Description,
+			&i.Category,
+			&i.TransactionDate,
+			&i.WalletID,
+			&i.CreatedAt,
+			&i.WalletName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateTransaction = `-- name: UpdateTransaction :one
 UPDATE transactions
 SET amount = $3, transaction_type = $4, description = $5, category = $6, transaction_date = $7, wallet_id = $8

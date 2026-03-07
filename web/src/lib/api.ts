@@ -101,11 +101,12 @@ export interface TransactionSummary {
 }
 
 export const transactions = {
-  list: (params?: { type?: string; limit?: number; offset?: number }) => {
+  list: (params?: { type?: string; limit?: number; offset?: number; q?: string }) => {
     const q = new URLSearchParams();
     if (params?.type) q.set("type", params.type);
     if (params?.limit) q.set("limit", String(params.limit));
     if (params?.offset) q.set("offset", String(params.offset));
+    if (params?.q) q.set("q", params.q);
     return request<TransactionList>(`/api/transactions/?${q}`);
   },
   create: (data: {
@@ -142,6 +143,16 @@ export const transactions = {
     if (year) q.set("year", String(year));
     if (month) q.set("month", String(month));
     return request<TransactionSummary>(`/api/transactions/summary?${q}`);
+  },
+  exportCSV: (year: number, month: number) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const q = new URLSearchParams({ year: String(year), month: String(month) });
+    return fetch(`${API_BASE}/api/transactions/export?${q}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then((res) => {
+      if (!res.ok) throw new Error("Export gagal");
+      return res.blob();
+    });
   },
 };
 

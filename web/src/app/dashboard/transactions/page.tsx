@@ -18,6 +18,8 @@ import {
   Trash2,
   X,
   Filter,
+  Download,
+  Search,
 } from "lucide-react";
 
 type TxType = "" | "INCOME" | "EXPENSE";
@@ -26,6 +28,7 @@ export default function TransactionsPage() {
   const [txList, setTxList] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<TxType>("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -34,6 +37,7 @@ export default function TransactionsPage() {
     try {
       const res = await txApi.list({
         type: filter || undefined,
+        q: searchQuery || undefined,
         limit: 50,
       });
       setTxList(res.transactions || []);
@@ -42,12 +46,13 @@ export default function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, searchQuery]);
 
   useEffect(() => {
     setLoading(true);
-    loadTx();
-  }, [loadTx]);
+    const timeout = setTimeout(() => loadTx(), searchQuery ? 300 : 0);
+    return () => clearTimeout(timeout);
+  }, [loadTx, searchQuery]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -71,17 +76,58 @@ export default function TransactionsPage() {
             Kelola semua catatan keuangan kamu
           </p>
         </div>
-        <button
-          onClick={() => {
-            setEditTx(null);
-            setShowForm(true);
-          }}
-          className="neo-btn px-5 py-3 flex items-center gap-2 text-white text-sm"
-          style={{ background: "#00C781" }}
-        >
-          <Plus size={18} strokeWidth={3} />
-          Tambah
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const now = new Date();
+              txApi.exportCSV(now.getFullYear(), now.getMonth() + 1).then((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `gascatet_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              });
+            }}
+            className="neo-btn px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
+            style={{ background: "#FFCC00", color: "#121212" }}
+          >
+            <Download size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" />
+            Export
+          </button>
+          <button
+            onClick={() => {
+              setEditTx(null);
+              setShowForm(true);
+            }}
+            className="neo-btn px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-1.5 sm:gap-2 text-white text-xs sm:text-sm"
+            style={{ background: "#00C781" }}
+          >
+            <Plus size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" />
+            Tambah
+          </button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="mb-4">
+        <div className="flex items-center neo-border overflow-hidden" style={{ background: "#FFFFFF" }}>
+          <span className="px-3 py-2">
+            <Search size={16} style={{ color: "#666" }} />
+          </span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 px-2 py-2 font-heading text-sm focus:outline-none"
+            placeholder="Cari transaksi..."
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="px-3 py-2">
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filter */}

@@ -269,6 +269,35 @@ func (s *Service) CreateFromRecurring(ctx context.Context, userID pgtype.UUID, a
 	return err
 }
 
+func (s *Service) Search(ctx context.Context, userID pgtype.UUID, query string, limit, offset int32) (ListResponse, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	rows, err := s.queries.SearchTransactions(ctx, SearchTransactionsParams{
+		UserID:  userID,
+		Column2: pgtype.Text{String: query, Valid: true},
+		Limit:   limit,
+		Offset:  offset,
+	})
+	if err != nil {
+		return ListResponse{}, fmt.Errorf("gagal search transaksi: %w", err)
+	}
+
+	resp := make([]TransactionResponse, len(rows))
+	for i, tx := range rows {
+		resp[i] = searchRowToResponse(tx)
+	}
+
+	return ListResponse{
+		Transactions: resp,
+		Count:        len(resp),
+	}, nil
+}
+
 // Helpers
 
 func parseTransactionDate(dateStr string) (time.Time, error) {
@@ -380,6 +409,24 @@ func listRowToResponse(tx ListTransactionsByUserRow) TransactionResponse {
 }
 
 func listTypeRowToResponse(tx ListTransactionsByUserAndTypeRow) TransactionResponse {
+	desc := ""
+	if tx.Description.Valid {
+		desc = tx.Description.String
+	}
+	return TransactionResponse{
+		ID:              uuidToString(tx.ID),
+		Amount:          tx.Amount,
+		TransactionType: tx.TransactionType,
+		Description:     desc,
+		Category:        tx.Category,
+		WalletID:        uuidToString(tx.WalletID),
+		WalletName:      tx.WalletName,
+		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
+		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
+	}
+}
+
+func searchRowToResponse(tx SearchTransactionsRow) TransactionResponse {
 	desc := ""
 	if tx.Description.Valid {
 		desc = tx.Description.String

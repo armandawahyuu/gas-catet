@@ -2,6 +2,8 @@ package transaction
 
 import (
 	"context"
+	"encoding/csv"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -94,8 +96,17 @@ func (h *Handler) List(c *fiber.Ctx) error {
 	}
 
 	txType := c.Query("type")
+	search := c.Query("q")
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	offset, _ := strconv.Atoi(c.Query("offset", "0"))
+
+	if search != "" {
+		resp, err := h.service.Search(c.Context(), userID, search, int32(limit), int32(offset))
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal cari transaksi"})
+		}
+		return c.JSON(resp)
+	}
 
 	resp, err := h.service.List(c.Context(), userID, txType, int32(limit), int32(offset))
 	if err != nil {
@@ -194,4 +205,64 @@ func (h *Handler) MonthlySummary(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(resp)
+}
+
+func (h *Handler) ExportCSV(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now().In(loc)
+
+	year, _ := strconv.Atoi(c.Query("year", strconv.Itoa(now.Year())))
+	monthInt, _ := strconv.Atoi(c.Query("month", strconv.Itoa(int(now.Month()))))
+
+	if monthInt < 1 || monthInt > 12 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "bulan harus 1-12"})
+	}
+
+	start := time.Date(year, time.Month(monthInt), 1, 0, 0, 0, 0, loc)
+	end := start.AddDate(0, 1, 0)
+
+	rows, err := h.service.queries.ListTransactionsForExport(c.Context(), ListTransactionsForExportParams{
+		UserID:            userID,
+		TransactionDate:   pgtype.Timestamptz{Time: start, Valid: true},
+		TransactionDate_2: pgtype.Timestamptz{Time: end, Valid: true},
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal export"})
+	}
+
+	filename := fmt.Sprintf("gascatet_%d-%02d.csv", year, monthInt)
+	c.Set("Content-Type", "text/csv")
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+
+	w := csv.NewWriter(c.Response().BodyWriter())
+	_ = w.Write([]string{"Tanggal", "Tipe", "Kategori", "Deskripsi", "Dompet", "Nominal"})
+
+	for _, r := range rows {
+		desc := ""
+		if r.Description.Valid {
+			desc = r.Description.String
+		}
+		tipe := "Pemasukan"
+		amount := r.Amount
+		if r.TransactionType == "EXPENSE" {
+			tipe = "Pengeluaran"
+			amount = -amount
+		}
+		_ = w.Write([]string{
+			r.TransactionDate.Time.Format("2006-01-02"),
+			tipe,
+			r.Category,
+			desc,
+			r.WalletName,
+			strconv.FormatInt(amount, 10),
+		})
+	}
+
+	w.Flush()
+	return nil
 }

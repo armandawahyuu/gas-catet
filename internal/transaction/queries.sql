@@ -42,3 +42,25 @@ WHERE user_id = $1
   AND transaction_date >= $2
   AND transaction_date < $3
 GROUP BY transaction_type;
+
+-- name: ListTransactionsForExport :many
+SELECT t.id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, COALESCE(w.name, '') AS wallet_name
+FROM transactions t
+LEFT JOIN wallets w ON t.wallet_id = w.id
+WHERE t.user_id = $1
+  AND t.transaction_date >= $2
+  AND t.transaction_date < $3
+ORDER BY t.transaction_date ASC, t.created_at ASC;
+
+-- name: SearchTransactions :many
+SELECT t.id, t.user_id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.wallet_id, t.created_at, COALESCE(w.name, '') AS wallet_name
+FROM transactions t
+LEFT JOIN wallets w ON t.wallet_id = w.id
+WHERE t.user_id = $1
+  AND (
+    t.description ILIKE '%' || $2 || '%'
+    OR t.category ILIKE '%' || $2 || '%'
+    OR COALESCE(w.name, '') ILIKE '%' || $2 || '%'
+  )
+ORDER BY t.transaction_date DESC, t.created_at DESC
+LIMIT $3 OFFSET $4;
