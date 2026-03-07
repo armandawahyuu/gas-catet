@@ -30,14 +30,16 @@ jobs:
               sed -n '/^-- +migrate Up/,/^-- +migrate Down/p' "$f" | head -n -1 | psql 'postgres://gascatet:gascatet2026@localhost:5432/gascatet?sslmode=disable' 2>&1 || true
             done
 
-            # Build Next.js frontend
+            # Restart Go API (fast, ~1s downtime)
+            sudo systemctl restart gascatet-api
+
+            # Build Next.js frontend WHILE old site is still running
             cd web
             npm ci --prefer-offline
-            NEXT_PUBLIC_API_URL=http://43.159.45.249 npx next build
+            NEXT_PUBLIC_API_URL=https://gascatet.my.id npx next build
             cd ..
 
-            # Restart services
-            sudo systemctl restart gascatet-api
+            # Only restart after build succeeds (near-zero downtime)
             sudo systemctl restart gascatet-web
 
             echo "Deploy complete!"
