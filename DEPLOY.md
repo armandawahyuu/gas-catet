@@ -8,7 +8,12 @@ Push ke `main` → GitHub Actions otomatis deploy ke production.
 git add -A && git commit -m "pesan commit" && git push
 ```
 
-Workflow: `.github/workflows/deploy.yml`
+Workflow: `.github/workflows/deploy.yml`  
+CI/CD menggunakan `deploy.sh` di server yang otomatis:
+- Pull latest code
+- Run pending migrations (tracking file, tidak re-run semua)
+- Build Go API → restart → health check
+- Build Next.js (skip npm ci jika package-lock.json tidak berubah) → restart → health check
 
 ## Manual (SSH)
 
@@ -27,42 +32,34 @@ Workflow: `.github/workflows/deploy.yml`
 ssh ubuntu@43.159.45.249
 ```
 
-### Deploy Backend (Go API)
+### Deploy Script (Recommended)
 
 ```bash
-cd /home/ubuntu/gas-catet
-git pull origin main
-export PATH=$PATH:/usr/local/go/bin
-go build -o gascatet-api ./cmd/api
-sudo systemctl restart gascatet-api
+# Deploy semuanya (migrate + api + web)
+/home/ubuntu/deploy.sh all
+
+# Deploy API saja
+/home/ubuntu/deploy.sh api
+
+# Deploy Web saja
+/home/ubuntu/deploy.sh web
+
+# Run migration saja
+/home/ubuntu/deploy.sh migrate
 ```
 
-### Deploy Frontend (Next.js)
-
-```bash
-cd /home/ubuntu/gas-catet/web
-git pull origin main
-NEXT_PUBLIC_API_URL=https://gascatet.my.id npx next build
-sudo systemctl restart gascatet-web
-```
-
-> **Penting**: Build DULU baru restart, supaya nggak ada downtime.
-
-### Run Migrations
-
-```bash
-for f in db/migrations/*.sql; do
-  sed -n '/^-- +migrate Up/,/^-- +migrate Down/p' "$f" | head -n -1 | \
-  psql 'postgres://gascatet:gascatet2026@localhost:5432/gascatet?sslmode=disable' || true
-done
-```
+Deploy script otomatis:
+- Track migrasi yang sudah dijalankan (skip yang lama)
+- Skip `npm ci` jika `package-lock.json` tidak berubah
+- Health check setelah restart
+- Tampilkan durasi deploy
 
 ## Services
 
-| Service          | Port | Command                                  |
-| ---------------- | ---- | ---------------------------------------- |
-| gascatet-api     | 3000 | `sudo systemctl restart gascatet-api`    |
-| gascatet-web     | 3001 | `sudo systemctl restart gascatet-web`    |
+| Service          | Port | Memory Limit | Command                               |
+| ---------------- | ---- | ------------ | ------------------------------------- |
+| gascatet-api     | 3000 | 256M         | `sudo systemctl restart gascatet-api` |
+| gascatet-web     | 3001 | 512M         | `sudo systemctl restart gascatet-web` |
 
 ### Cek Status
 
@@ -77,6 +74,17 @@ sudo systemctl status gascatet-web
 sudo journalctl -u gascatet-api -f
 sudo journalctl -u gascatet-web -f
 ```
+
+## Nginx
+
+Config: `/etc/nginx/sites-enabled/gascatet`
+
+Fitur:
+- Gzip compression (JS, CSS, JSON, SVG)
+- Static asset caching (`/_next/static/` → 1 year, immutable)
+- Security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
+- Custom 502 page saat deploy (auto-refresh 5 detik)
+- Proxy buffering & timeout settings
 
 ## GitHub Secrets (sudah di-set)
 

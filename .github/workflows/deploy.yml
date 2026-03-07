@@ -7,6 +7,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.2
@@ -14,32 +15,9 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
+          command_timeout: 12m
           script_stop: true
           script: |
             cd /home/ubuntu/gas-catet
-
-            # Pull latest code
             git pull origin main
-
-            # Build Go backend
-            export PATH=$PATH:/usr/local/go/bin
-            go build -o gascatet-api ./cmd/api
-
-            # Run migrations (UP section only)
-            for f in db/migrations/*.sql; do
-              sed -n '/^-- +migrate Up/,/^-- +migrate Down/p' "$f" | head -n -1 | psql 'postgres://gascatet:gascatet2026@localhost:5432/gascatet?sslmode=disable' 2>&1 || true
-            done
-
-            # Restart Go API (fast, ~1s downtime)
-            sudo systemctl restart gascatet-api
-
-            # Build Next.js frontend WHILE old site is still running
-            cd web
-            npm ci --prefer-offline
-            NEXT_PUBLIC_API_URL=https://gascatet.my.id npx next build
-            cd ..
-
-            # Only restart after build succeeds (near-zero downtime)
-            sudo systemctl restart gascatet-web
-
-            echo "Deploy complete!"
+            /home/ubuntu/deploy.sh all
