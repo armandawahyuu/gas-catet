@@ -20,4 +20,6 @@ jobs:
           script: |
             cd /home/ubuntu/gas-catet
             git pull origin main
-            /home/ubuntu/deploy.sh all
+            /home/ubuntu/deploy.sh migrate
+            /home/ubuntu/deploy.sh api
+            /home/ubuntu/deploy.sh web
