@@ -237,9 +237,16 @@ function WalletForm({
   const isEdit = !!initial;
   const [name, setName] = useState(initial?.name || "");
   const [icon, setIcon] = useState(initial?.icon || "💰");
-  const [balance, setBalance] = useState(initial?.balance?.toString() || "0");
+  const [balance, setBalance] = useState(
+    initial?.balance ? initial.balance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "0"
+  );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const formatNumber = (val: string) => {
+    const num = val.replace(/\D/g, "");
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,14 +257,17 @@ function WalletForm({
     setSaving(true);
     setError("");
     try {
+      const numBalance = parseInt(balance.replace(/\D/g, ""), 10) || 0;
       if (isEdit && initial) {
         await walletsApi.update(initial.id, name.trim(), icon);
-        const numBalance = parseInt(balance.replace(/\D/g, ""), 10);
-        if (!isNaN(numBalance) && numBalance !== initial.balance) {
+        if (numBalance !== initial.balance) {
           await walletsApi.setBalance(initial.id, numBalance);
         }
       } else {
-        await walletsApi.create(name.trim(), icon);
+        const res = await walletsApi.create(name.trim(), icon);
+        if (numBalance > 0 && res.id) {
+          await walletsApi.setBalance(res.id, numBalance);
+        }
       }
       onSaved();
     } catch (err) {
@@ -326,21 +336,24 @@ function WalletForm({
             />
           </div>
 
-          {isEdit && (
-            <div>
-              <label className="block font-heading text-xs font-bold mb-2 uppercase tracking-wider">
-                Saldo
-              </label>
+          <div>
+            <label className="block font-heading text-xs font-bold mb-2 uppercase tracking-wider">
+              {isEdit ? "Saldo" : "Saldo Awal"}
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono font-bold text-sm" style={{ color: "#666" }}>
+                Rp
+              </span>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={balance}
-                onChange={(e) => setBalance(e.target.value)}
-                className="neo-input w-full px-4 py-3 text-sm font-mono"
+                onChange={(e) => setBalance(formatNumber(e.target.value))}
+                className="neo-input w-full pl-12 pr-4 py-3 text-sm font-mono"
                 placeholder="0"
-                min="0"
               />
             </div>
-          )}
+          </div>
 
           <button
             type="submit"
