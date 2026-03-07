@@ -28,6 +28,16 @@ type Transaction struct {
 	WalletID        pgtype.UUID        `json:"wallet_id"`
 }
 
+type Transfer struct {
+	ID           pgtype.UUID        `json:"id"`
+	UserID       pgtype.UUID        `json:"user_id"`
+	FromWalletID pgtype.UUID        `json:"from_wallet_id"`
+	ToWalletID   pgtype.UUID        `json:"to_wallet_id"`
+	Amount       int64              `json:"amount"`
+	Note         string             `json:"note"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type User struct {
 	ID           pgtype.UUID        `json:"id"`
 	Email        string             `json:"email"`

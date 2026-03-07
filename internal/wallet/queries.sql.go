@@ -11,6 +11,41 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createTransfer = `-- name: CreateTransfer :one
+INSERT INTO transfers (user_id, from_wallet_id, to_wallet_id, amount, note)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, user_id, from_wallet_id, to_wallet_id, amount, note, created_at
+`
+
+type CreateTransferParams struct {
+	UserID       pgtype.UUID `json:"user_id"`
+	FromWalletID pgtype.UUID `json:"from_wallet_id"`
+	ToWalletID   pgtype.UUID `json:"to_wallet_id"`
+	Amount       int64       `json:"amount"`
+	Note         string      `json:"note"`
+}
+
+func (q *Queries) CreateTransfer(ctx context.Context, arg CreateTransferParams) (Transfer, error) {
+	row := q.db.QueryRow(ctx, createTransfer,
+		arg.UserID,
+		arg.FromWalletID,
+		arg.ToWalletID,
+		arg.Amount,
+		arg.Note,
+	)
+	var i Transfer
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.FromWalletID,
+		&i.ToWalletID,
+		&i.Amount,
+		&i.Note,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createWallet = `-- name: CreateWallet :one
 INSERT INTO wallets (user_id, name, icon)
 VALUES ($1, $2, $3)
@@ -34,6 +69,30 @@ func (q *Queries) CreateWallet(ctx context.Context, arg CreateWalletParams) (Wal
 		&i.Balance,
 		&i.CreatedAt,
 	)
+	return i, err
+}
+
+const deleteTransfer = `-- name: DeleteTransfer :one
+DELETE FROM transfers
+WHERE id = $1 AND user_id = $2
+RETURNING from_wallet_id, to_wallet_id, amount
+`
+
+type DeleteTransferParams struct {
+	ID     pgtype.UUID `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+type DeleteTransferRow struct {
+	FromWalletID pgtype.UUID `json:"from_wallet_id"`
+	ToWalletID   pgtype.UUID `json:"to_wallet_id"`
+	Amount       int64       `json:"amount"`
+}
+
+func (q *Queries) DeleteTransfer(ctx context.Context, arg DeleteTransferParams) (DeleteTransferRow, error) {
+	row := q.db.QueryRow(ctx, deleteTransfer, arg.ID, arg.UserID)
+	var i DeleteTransferRow
+	err := row.Scan(&i.FromWalletID, &i.ToWalletID, &i.Amount)
 	return i, err
 }
 
@@ -88,6 +147,70 @@ func (q *Queries) GetWalletsTotalBalance(ctx context.Context, userID pgtype.UUID
 	var total int64
 	err := row.Scan(&total)
 	return total, err
+}
+
+const listTransfersByUser = `-- name: ListTransfersByUser :many
+SELECT t.id, t.user_id, t.from_wallet_id, t.to_wallet_id, t.amount, t.note, t.created_at,
+       fw.name AS from_wallet_name, fw.icon AS from_wallet_icon,
+       tw.name AS to_wallet_name, tw.icon AS to_wallet_icon
+FROM transfers t
+JOIN wallets fw ON fw.id = t.from_wallet_id
+JOIN wallets tw ON tw.id = t.to_wallet_id
+WHERE t.user_id = $1
+ORDER BY t.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListTransfersByUserParams struct {
+	UserID pgtype.UUID `json:"user_id"`
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
+}
+
+type ListTransfersByUserRow struct {
+	ID             pgtype.UUID        `json:"id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	FromWalletID   pgtype.UUID        `json:"from_wallet_id"`
+	ToWalletID     pgtype.UUID        `json:"to_wallet_id"`
+	Amount         int64              `json:"amount"`
+	Note           string             `json:"note"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	FromWalletName string             `json:"from_wallet_name"`
+	FromWalletIcon string             `json:"from_wallet_icon"`
+	ToWalletName   string             `json:"to_wallet_name"`
+	ToWalletIcon   string             `json:"to_wallet_icon"`
+}
+
+func (q *Queries) ListTransfersByUser(ctx context.Context, arg ListTransfersByUserParams) ([]ListTransfersByUserRow, error) {
+	rows, err := q.db.Query(ctx, listTransfersByUser, arg.UserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTransfersByUserRow
+	for rows.Next() {
+		var i ListTransfersByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FromWalletID,
+			&i.ToWalletID,
+			&i.Amount,
+			&i.Note,
+			&i.CreatedAt,
+			&i.FromWalletName,
+			&i.FromWalletIcon,
+			&i.ToWalletName,
+			&i.ToWalletIcon,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listWalletsByUser = `-- name: ListWalletsByUser :many

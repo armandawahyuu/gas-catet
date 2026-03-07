@@ -132,6 +132,11 @@ func main() {
 	walGroup.Patch("/:id/balance", walHandler.SetBalance)
 	walGroup.Delete("/:id", walHandler.Delete)
 
+	transferGroup := api.Group("/transfers", userHandler.AuthMiddleware)
+	transferGroup.Get("/", walHandler.ListTransfers)
+	transferGroup.Post("/", walHandler.Transfer)
+	transferGroup.Delete("/:id", walHandler.DeleteTransfer)
+
 	analyticsGroup := api.Group("/analytics", userHandler.AuthMiddleware)
 	analyticsGroup.Get("/summary", analyticsHandler.Summary)
 	analyticsGroup.Get("/daily", analyticsHandler.Daily)

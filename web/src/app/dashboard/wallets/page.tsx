@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { wallets as walletsApi, type WalletItem } from "@/lib/api";
+import { wallets as walletsApi, transfers as transfersApi, type WalletItem, type TransferItem } from "@/lib/api";
 import { formatRupiah } from "@/lib/utils";
-import { Wallet, Plus, Pencil, Trash2, X } from "lucide-react";
+import { Wallet, Plus, Pencil, Trash2, X, ArrowRightLeft } from "lucide-react";
 
 const ICON_OPTIONS = ["💵", "🏦", "📱", "💳", "🪙", "💰", "🏧", "💎"];
 
@@ -14,6 +14,8 @@ export default function WalletsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editWallet, setEditWallet] = useState<WalletItem | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferList, setTransferList] = useState<TransferItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -29,8 +31,18 @@ export default function WalletsPage() {
     }
   };
 
+  const loadTransfers = async () => {
+    try {
+      const res = await transfersApi.list(10);
+      setTransferList(res.transfers || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     loadWallets();
+    loadTransfers();
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -76,6 +88,16 @@ export default function WalletsPage() {
           <Plus size={18} strokeWidth={3} />
           Tambah Dompet
         </button>
+        {walletList.length >= 2 && (
+          <button
+            onClick={() => setShowTransfer(true)}
+            className="neo-btn px-5 py-3 flex items-center gap-2 text-white text-sm"
+            style={{ background: "#FFCC00", color: "#121212" }}
+          >
+            <ArrowRightLeft size={18} strokeWidth={3} />
+            Transfer
+          </button>
+        )}
       </div>
 
       {message && (
@@ -220,6 +242,52 @@ export default function WalletsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Transfer History */}
+      {transferList.length > 0 && (
+        <div className="mt-8">
+          <h2 className="font-heading text-xl font-bold mb-4 flex items-center gap-2">
+            <ArrowRightLeft size={20} />
+            Riwayat Transfer
+          </h2>
+          <div className="space-y-3">
+            {transferList.map((t) => (
+              <div key={t.id} className="neo-card p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{t.from_wallet_icon}</span>
+                    <span className="font-heading text-sm font-bold">{t.from_wallet_name}</span>
+                  </div>
+                  <ArrowRightLeft size={16} style={{ color: "#666" }} />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{t.to_wallet_icon}</span>
+                    <span className="font-heading text-sm font-bold">{t.to_wallet_name}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono text-sm font-bold">{formatRupiah(t.amount)}</div>
+                  {t.note && <div className="text-xs" style={{ color: "#666" }}>{t.note}</div>}
+                  <div className="text-xs" style={{ color: "#999" }}>{t.created_at}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {showTransfer && (
+        <TransferForm
+          wallets={walletList}
+          onClose={() => setShowTransfer(false)}
+          onSaved={() => {
+            setShowTransfer(false);
+            setMessage("Transfer berhasil!");
+            loadWallets();
+            loadTransfers();
+          }}
+        />
       )}
     </div>
   );
@@ -373,4 +441,168 @@ function WalletForm({
   );
 }
 
+function TransferForm({
+  wallets,
+  onClose,
+  onSaved,
+}: {
+  wallets: WalletItem[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [fromId, setFromId] = useState(wallets[0]?.id || "");
+  const [toId, setToId] = useState(wallets[1]?.id || "");
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
+  const formatNumber = (val: string) => {
+    const num = val.replace(/\D/g, "");
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  const fromWallet = wallets.find((w) => w.id === fromId);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const numAmount = parseInt(amount.replace(/\D/g, ""), 10);
+    if (!numAmount || numAmount <= 0) {
+      setError("Nominal harus lebih dari 0");
+      return;
+    }
+    if (fromId === toId) {
+      setError("Dompet asal dan tujuan tidak boleh sama");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await transfersApi.create(fromId, toId, numAmount, note);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal transfer");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
+      <div className="neo-card p-6 w-full max-w-md">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-heading text-xl font-bold">Transfer Saldo</h3>
+          <button onClick={onClose} className="p-1 hover:opacity-70">
+            <X size={20} />
+          </button>
+        </div>
+
+        {error && (
+          <div
+            className="neo-border p-3 mb-4 text-sm font-medium"
+            style={{ background: "#FF3B30", color: "white" }}
+          >
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block font-heading text-xs font-bold mb-2 uppercase tracking-wider">
+              Dari Dompet
+            </label>
+            <select
+              value={fromId}
+              onChange={(e) => setFromId(e.target.value)}
+              className="neo-input w-full px-4 py-3 text-sm"
+            >
+              {wallets.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.icon} {w.name} — {formatRupiah(w.balance)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-center">
+            <div
+              className="w-10 h-10 neo-border flex items-center justify-center"
+              style={{ background: "#FFCC00" }}
+            >
+              <ArrowRightLeft size={18} strokeWidth={3} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-heading text-xs font-bold mb-2 uppercase tracking-wider">
+              Ke Dompet
+            </label>
+            <select
+              value={toId}
+              onChange={(e) => setToId(e.target.value)}
+              className="neo-input w-full px-4 py-3 text-sm"
+            >
+              {wallets
+                .filter((w) => w.id !== fromId)
+                .map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.icon} {w.name} — {formatRupiah(w.balance)}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-heading text-xs font-bold mb-2 uppercase tracking-wider">
+              Nominal
+            </label>
+            <div className="relative">
+              <span
+                className="absolute left-4 top-1/2 -translate-y-1/2 font-mono font-bold text-sm"
+                style={{ color: "#666" }}
+              >
+                Rp
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amount}
+                onChange={(e) => setAmount(formatNumber(e.target.value))}
+                className="neo-input w-full pl-12 pr-4 py-3 text-sm font-mono"
+                placeholder="0"
+                required
+              />
+            </div>
+            {fromWallet && (
+              <p className="text-xs mt-1" style={{ color: "#666" }}>
+                Saldo tersedia: {formatRupiah(fromWallet.balance)}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block font-heading text-xs font-bold mb-2 uppercase tracking-wider">
+              Catatan <span style={{ color: "#999" }}>(opsional)</span>
+            </label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="neo-input w-full px-4 py-3 text-sm"
+              placeholder="Contoh: Top up GoPay"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="neo-btn w-full py-3 text-sm text-white font-bold"
+            style={{ background: "#FFCC00", color: "#121212" }}
+          >
+            {saving ? "Memproses..." : "Transfer Sekarang"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

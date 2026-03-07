@@ -131,3 +131,64 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "dompet berhasil dihapus"})
 }
+
+func (h *Handler) Transfer(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	var req TransferRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "request body tidak valid"})
+	}
+
+	t, err := h.service.Transfer(c.Context(), userID, req)
+	if err != nil {
+		switch err {
+		case ErrSameWallet, ErrInvalidAmount:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		case ErrInsufficientFunds:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		default:
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(t)
+}
+
+func (h *Handler) ListTransfers(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	limit := c.QueryInt("limit", 20)
+	offset := c.QueryInt("offset", 0)
+
+	transfers, err := h.service.ListTransfers(c.Context(), userID, int32(limit), int32(offset))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal ambil transfer"})
+	}
+
+	return c.JSON(fiber.Map{"transfers": transfers})
+}
+
+func (h *Handler) DeleteTransfer(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	transferID, err := stringToUUID(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID tidak valid"})
+	}
+
+	if err := h.service.DeleteTransfer(c.Context(), userID, transferID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal hapus transfer"})
+	}
+
+	return c.JSON(fiber.Map{"message": "transfer berhasil dihapus"})
+}

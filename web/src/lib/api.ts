@@ -305,6 +305,43 @@ export const wallets = {
     request<{ message: string }>(`/api/wallets/${id}`, { method: "DELETE" }),
 };
 
+// Transfers
+export interface TransferItem {
+  id: string;
+  from_wallet_id: string;
+  from_wallet_name: string;
+  from_wallet_icon: string;
+  to_wallet_id: string;
+  to_wallet_name: string;
+  to_wallet_icon: string;
+  amount: number;
+  note: string;
+  created_at: string;
+}
+
+export interface TransfersListResponse {
+  transfers: TransferItem[];
+}
+
+export const transfers = {
+  list: (limit = 20, offset = 0) =>
+    request<TransfersListResponse>(
+      `/api/transfers/?limit=${limit}&offset=${offset}`
+    ),
+  create: (
+    from_wallet_id: string,
+    to_wallet_id: string,
+    amount: number,
+    note: string
+  ) =>
+    request<TransferItem>("/api/transfers/", {
+      method: "POST",
+      body: JSON.stringify({ from_wallet_id, to_wallet_id, amount, note }),
+    }),
+  delete: (id: string) =>
+    request<{ message: string }>(`/api/transfers/${id}`, { method: "DELETE" }),
+};
+
 // User profile update
 export const userSettings = {
   updateProfile: (name: string, email: string) =>
