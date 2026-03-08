@@ -160,6 +160,46 @@ func (q *Queries) LinkTelegram(ctx context.Context, arg LinkTelegramParams) (Lin
 	return i, err
 }
 
+const listLinkedTelegramUsers = `-- name: ListLinkedTelegramUsers :many
+SELECT id, email, name, telegram_id, created_at
+FROM users
+WHERE telegram_id IS NOT NULL
+`
+
+type ListLinkedTelegramUsersRow struct {
+	ID         pgtype.UUID        `json:"id"`
+	Email      string             `json:"email"`
+	Name       string             `json:"name"`
+	TelegramID pgtype.Int8        `json:"telegram_id"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListLinkedTelegramUsers(ctx context.Context) ([]ListLinkedTelegramUsersRow, error) {
+	rows, err := q.db.Query(ctx, listLinkedTelegramUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLinkedTelegramUsersRow
+	for rows.Next() {
+		var i ListLinkedTelegramUsersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Name,
+			&i.TelegramID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const unlinkTelegram = `-- name: UnlinkTelegram :one
 UPDATE users
 SET telegram_id = NULL

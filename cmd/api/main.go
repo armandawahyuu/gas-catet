@@ -96,7 +96,13 @@ func main() {
 		bot := telegram.NewBotClient(telegramToken)
 		fsm := telegram.NewFSM()
 		tgHandler = telegram.NewHandler(bot, fsm, catService, userService, txService, txQueries, walService)
-		log.Println("Telegram Bot enabled")
+
+		// Auto report scheduler
+		reporter := telegram.NewReporter(bot, userService, txService)
+		reporter.StartDailyReport()
+		tgHandler.SetReporter(reporter)
+
+		log.Println("Telegram Bot enabled (with daily report scheduler)")
 	} else {
 		log.Println("Telegram Bot disabled (TELEGRAM_BOT_TOKEN not set)")
 	}

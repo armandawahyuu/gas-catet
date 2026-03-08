@@ -40,3 +40,8 @@ RETURNING id, email, name, telegram_id, created_at;
 UPDATE users
 SET password_hash = $2
 WHERE id = $1;
+
+-- name: ListLinkedTelegramUsers :many
+SELECT id, email, name, telegram_id, created_at
+FROM users
+WHERE telegram_id IS NOT NULL;

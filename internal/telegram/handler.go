@@ -25,6 +25,7 @@ type Handler struct {
 	txSvc     *transaction.Service
 	txQueries *transaction.Queries
 	walSvc    *wallet.Service
+	reporter  *Reporter
 }
 
 func NewHandler(bot *BotClient, fsm *FSM, catSvc *category.Service, userSvc *user.Service, txSvc *transaction.Service, txQueries *transaction.Queries, walSvc *wallet.Service) *Handler {
@@ -37,6 +38,10 @@ func NewHandler(bot *BotClient, fsm *FSM, catSvc *category.Service, userSvc *use
 		txQueries: txQueries,
 		walSvc:    walSvc,
 	}
+}
+
+func (h *Handler) SetReporter(r *Reporter) {
+	h.reporter = r
 }
 
 // Webhook handles incoming Telegram updates
@@ -105,6 +110,12 @@ func (h *Handler) handleCommand(chatID, telegramID int64, text string) {
 		h.handleLinkToken(chatID, telegramID, token)
 	case text == "/saldo":
 		h.handleSaldo(chatID, telegramID)
+	case text == "/laporan":
+		if h.reporter != nil {
+			h.reporter.SendReportToUser(chatID, telegramID)
+		} else {
+			h.sendMessage(chatID, "⚠️ Fitur laporan belum aktif.")
+		}
 	case strings.HasPrefix(text, "/catat "):
 		h.handleQuickAdd(chatID, telegramID, strings.TrimPrefix(text, "/catat "), TypeExpense)
 	case strings.HasPrefix(text, "/masuk "):
@@ -605,6 +616,7 @@ func (h *Handler) sendHelp(chatID int64) {
 Perintah:
 /start - Menu utama
 /saldo - Cek saldo bulan ini
+/laporan - Laporan keuangan lengkap
 /catat <nominal> <deskripsi> - Quick add pengeluaran
 /masuk <nominal> <deskripsi> - Quick add pemasukan
 /link <token> - Hubungkan akun Telegram
@@ -613,6 +625,8 @@ Perintah:
 Quick Add:
 /catat 40000 kopi starbucks
 /masuk 5000000 gaji bulanan
+
+📊 Laporan otomatis dikirim setiap jam 20:00 WIB
 
 Cara pakai (menu):
 1. Tap /start
