@@ -679,8 +679,7 @@ export default function Home() {
                     ))}
                   </div>
                   <Link
-                    href="https://dna-indonesia.myr.id/m/gascatet-pro"
-                    target="_blank"
+                    href="/register"
                     className="neo-btn w-full text-center py-3 text-sm font-bold mt-8 inline-block text-white"
                     style={{ background: "#FF3B30" }}
                   >
