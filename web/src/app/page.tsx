@@ -190,7 +190,7 @@ export default function Home() {
     { icon: Target, color: "#00C781", title: "Target Tabungan", desc: "Mau nabung buat liburan? HP baru? Track progress-nya di sini." },
     { icon: Repeat, color: "#FFCC00", title: "Transaksi Berulang", desc: "Bayar kos, Netflix, Spotify? Auto-catat tiap bulan tanpa ribet." },
     { icon: BarChart3, color: "#FF3B30", title: "Analitik", desc: "Grafik pengeluaran harian, mingguan, bulanan. Visual yang jelas." },
-    { icon: Receipt, color: "#00C781", title: "Scan Struk AI", desc: "Foto struk → kirim ke bot → otomatis kecatat. AI baca total, toko, tanggal." },
+    { icon: Receipt, color: "#00C781", title: "Scan Struk AI", desc: "Foto struk → kirim ke bot → pilih dompet → otomatis kecatat. AI baca total, toko, tanggal & masuk ke dompet yang kamu pilih." },
     { icon: FileDown, color: "#FFCC00", title: "Export CSV", desc: "Download semua data transaksi ke spreadsheet kapan aja." },
     { icon: Shield, color: "#FF3B30", title: "Aman & Privat", desc: "Data keuangan kamu cuma bisa diakses sama kamu. Titik." },
   ];
@@ -501,7 +501,7 @@ export default function Home() {
                   { cmd: "/saldo", desc: "Ringkasan saldo bulan ini" },
                   { cmd: "/laporan", desc: "Laporan lengkap hari ini & bulan ini" },
                   { cmd: "/akun", desc: "Cek info akun yang terhubung" },
-                  { cmd: "📸 Foto struk", desc: "Kirim foto struk → otomatis kecatat!" },
+                  { cmd: "📸 Foto struk", desc: "Kirim foto struk → pilih dompet → otomatis kecatat!" },
                 ].map((item, i) => (
                   <div key={i} className="neo-card p-4 flex items-center gap-4 group">
                     <code
