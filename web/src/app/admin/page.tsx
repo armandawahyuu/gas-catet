@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   adminApi,
   AdminDashboard,
@@ -20,64 +19,22 @@ function formatRupiah(n: number) {
   return "Rp " + n.toLocaleString("id-ID");
 }
 
-function timeAgo(dateStr: string) {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "baru saja";
-  if (mins < 60) return `${mins} menit lalu`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} jam lalu`;
-  const days = Math.floor(hours / 24);
-  return `${days} hari lalu`;
-}
-
 export default function AdminPage() {
-  const router = useRouter();
   const [data, setData] = useState<AdminDashboard | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     adminApi
-      .check()
-      .then((res) => {
-        if (!res.is_admin) {
-          router.push("/dashboard");
-          return;
-        }
-        return adminApi.dashboard();
-      })
-      .then((d) => {
-        if (d) setData(d);
-      })
-      .catch((e) => setError(e.message))
+      .dashboard()
+      .then(setData)
       .finally(() => setLoading(false));
-  }, [router]);
+  }, []);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="font-heading text-xl font-bold animate-pulse">
-          Loading admin...
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div
-          className="neo-border p-6 text-center"
-          style={{ background: "#FFF" }}
-        >
-          <Shield size={48} className="mx-auto mb-4" style={{ color: "#FF3B30" }} />
-          <p className="font-heading text-lg font-bold">Akses Ditolak</p>
-          <p className="text-sm mt-2" style={{ color: "#666" }}>
-            {error}
-          </p>
+        <div className="font-heading text-xl font-bold animate-pulse text-white">
+          Loading data...
         </div>
       </div>
     );
@@ -89,22 +46,6 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div
-          className="w-12 h-12 flex items-center justify-center neo-border"
-          style={{ background: "#FF3B30" }}
-        >
-          <Shield size={24} strokeWidth={2.5} className="text-white" />
-        </div>
-        <div>
-          <h1 className="font-heading text-2xl font-bold">Admin Dashboard</h1>
-          <p className="text-sm" style={{ color: "#666" }}>
-            Monitor aplikasi GasCatet
-          </p>
-        </div>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div
@@ -189,10 +130,7 @@ export default function AdminPage() {
       {/* Two columns: Users + Recent Transactions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Users Table */}
-        <div
-          className="neo-border p-5"
-          style={{ background: "#FFFFFF" }}
-        >
+        <div className="neo-border p-5" style={{ background: "#FFFFFF" }}>
           <h2 className="font-heading text-lg font-bold mb-4 flex items-center gap-2">
             <Users size={18} strokeWidth={2.5} />
             Semua Users ({users.length})
@@ -208,16 +146,10 @@ export default function AdminPage() {
                   <p className="font-heading text-sm font-bold truncate">
                     {u.name}
                   </p>
-                  <p
-                    className="text-xs truncate"
-                    style={{ color: "#666" }}
-                  >
+                  <p className="text-xs truncate" style={{ color: "#666" }}>
                     {u.email}
                   </p>
-                  <p
-                    className="text-xs mt-1"
-                    style={{ color: "#999" }}
-                  >
+                  <p className="text-xs mt-1" style={{ color: "#999" }}>
                     {new Date(u.created_at).toLocaleDateString("id-ID", {
                       day: "numeric",
                       month: "short",
@@ -251,10 +183,7 @@ export default function AdminPage() {
         </div>
 
         {/* Recent Transactions */}
-        <div
-          className="neo-border p-5"
-          style={{ background: "#FFFFFF" }}
-        >
+        <div className="neo-border p-5" style={{ background: "#FFFFFF" }}>
           <h2 className="font-heading text-lg font-bold mb-4 flex items-center gap-2">
             <Receipt size={18} strokeWidth={2.5} />
             10 Transaksi Terbaru

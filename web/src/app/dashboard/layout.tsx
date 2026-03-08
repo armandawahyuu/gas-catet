@@ -35,8 +35,6 @@ const navItems = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
-const adminNavItem = { href: "/dashboard/admin", label: "Admin", icon: Shield };
-
 export default function DashboardLayout({
   children,
 }: {
@@ -113,7 +111,7 @@ export default function DashboardLayout({
 
         {/* Nav items */}
         <nav className="flex-1 p-4 space-y-2">
-          {[...navItems, ...(isAdmin ? [adminNavItem] : [])].map((item) => {
+          {navItems.map((item) => {
             const active = pathname === item.href;
             return (
               <Link
@@ -148,14 +146,26 @@ export default function DashboardLayout({
               {profile.email}
             </div>
           </div>
-          <button
-            onClick={logout}
-            className="flex items-center gap-2 text-sm font-heading font-bold uppercase tracking-wider hover:opacity-70 transition-opacity"
-            style={{ color: "#FF3B30" }}
-          >
-            <LogOut size={16} strokeWidth={2.5} />
-            Keluar
-          </button>
+          <div className="flex items-center gap-4">
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 text-sm font-heading font-bold uppercase tracking-wider hover:opacity-70 transition-opacity"
+                style={{ color: "#FF3B30" }}
+              >
+                <Shield size={16} strokeWidth={2.5} />
+                Admin
+              </Link>
+            )}
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 text-sm font-heading font-bold uppercase tracking-wider hover:opacity-70 transition-opacity"
+              style={{ color: "#FF3B30" }}
+            >
+              <LogOut size={16} strokeWidth={2.5} />
+              Keluar
+            </button>
+          </div>
         </div>
       </aside>
 
