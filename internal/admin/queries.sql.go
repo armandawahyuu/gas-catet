@@ -11,106 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const allCategories = `-- name: AllCategories :many
-SELECT category,
-       transaction_type,
-       COUNT(*)::BIGINT AS tx_count,
-       COALESCE(SUM(amount), 0)::BIGINT AS total_amount
-FROM transactions
-GROUP BY category, transaction_type
-ORDER BY total_amount DESC
-`
-
-type AllCategoriesRow struct {
-	Category        string `json:"category"`
-	TransactionType string `json:"transaction_type"`
-	TxCount         int64  `json:"tx_count"`
-	TotalAmount     int64  `json:"total_amount"`
-}
-
-func (q *Queries) AllCategories(ctx context.Context) ([]AllCategoriesRow, error) {
-	rows, err := q.db.Query(ctx, allCategories)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []AllCategoriesRow
-	for rows.Next() {
-		var i AllCategoriesRow
-		if err := rows.Scan(
-			&i.Category,
-			&i.TransactionType,
-			&i.TxCount,
-			&i.TotalAmount,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const allTransactions = `-- name: AllTransactions :many
-SELECT t.id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.created_at,
-       u.name AS user_name, u.email AS user_email
+const avgTxPerUser = `-- name: AvgTxPerUser :one
+SELECT COALESCE(ROUND(COUNT(t.id)::NUMERIC / NULLIF(COUNT(DISTINCT t.user_id), 0), 1), 0)::FLOAT8 AS avg_tx
 FROM transactions t
-JOIN users u ON u.id = t.user_id
-ORDER BY t.created_at DESC
 `
 
-type AllTransactionsRow struct {
-	ID              pgtype.UUID        `json:"id"`
-	Amount          int64              `json:"amount"`
-	TransactionType string             `json:"transaction_type"`
-	Description     pgtype.Text        `json:"description"`
-	Category        string             `json:"category"`
-	TransactionDate pgtype.Timestamptz `json:"transaction_date"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	UserName        string             `json:"user_name"`
-	UserEmail       string             `json:"user_email"`
+func (q *Queries) AvgTxPerUser(ctx context.Context) (float64, error) {
+	row := q.db.QueryRow(ctx, avgTxPerUser)
+	var avg_tx float64
+	err := row.Scan(&avg_tx)
+	return avg_tx, err
 }
 
-func (q *Queries) AllTransactions(ctx context.Context) ([]AllTransactionsRow, error) {
-	rows, err := q.db.Query(ctx, allTransactions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []AllTransactionsRow
-	for rows.Next() {
-		var i AllTransactionsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Amount,
-			&i.TransactionType,
-			&i.Description,
-			&i.Category,
-			&i.TransactionDate,
-			&i.CreatedAt,
-			&i.UserName,
-			&i.UserEmail,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+const countActiveUsers30d = `-- name: CountActiveUsers30d :one
+SELECT COUNT(DISTINCT user_id)::BIGINT AS total
+FROM transactions
+WHERE transaction_date >= CURRENT_DATE - INTERVAL '30 days'
+`
+
+func (q *Queries) CountActiveUsers30d(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveUsers30d)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
 }
 
-const countActiveUsers = `-- name: CountActiveUsers :one
+const countActiveUsers7d = `-- name: CountActiveUsers7d :one
 SELECT COUNT(DISTINCT user_id)::BIGINT AS total
 FROM transactions
 WHERE transaction_date >= CURRENT_DATE - INTERVAL '7 days'
 `
 
-func (q *Queries) CountActiveUsers(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, countActiveUsers)
+func (q *Queries) CountActiveUsers7d(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveUsers7d)
 	var total int64
 	err := row.Scan(&total)
 	return total, err
@@ -139,9 +72,11 @@ func (q *Queries) CountTransactions(ctx context.Context) (int64, error) {
 }
 
 const countUsers = `-- name: CountUsers :one
+
 SELECT COUNT(*)::BIGINT AS total FROM users
 `
 
+// ============ CORE STATS ============
 func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, countUsers)
 	var total int64
@@ -149,32 +84,138 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 	return total, err
 }
 
-const dailyVolume = `-- name: DailyVolume :many
+const cumulativeUsers = `-- name: CumulativeUsers :many
+SELECT date_str, SUM(new_users) OVER (ORDER BY date_str) AS cumulative
+FROM (
+  SELECT created_at::date::TEXT AS date_str,
+         COUNT(*)::BIGINT AS new_users
+  FROM users
+  GROUP BY created_at::date
+) sub
+ORDER BY date_str
+`
+
+type CumulativeUsersRow struct {
+	DateStr    string `json:"date_str"`
+	Cumulative int64  `json:"cumulative"`
+}
+
+func (q *Queries) CumulativeUsers(ctx context.Context) ([]CumulativeUsersRow, error) {
+	rows, err := q.db.Query(ctx, cumulativeUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CumulativeUsersRow
+	for rows.Next() {
+		var i CumulativeUsersRow
+		if err := rows.Scan(&i.DateStr, &i.Cumulative); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const dailyActiveUsers = `-- name: DailyActiveUsers :many
+
 SELECT transaction_date::TEXT AS date_str,
-       COALESCE(SUM(CASE WHEN transaction_type = 'INCOME' THEN amount ELSE 0 END), 0)::BIGINT AS income,
-       COALESCE(SUM(CASE WHEN transaction_type = 'EXPENSE' THEN amount ELSE 0 END), 0)::BIGINT AS expense
+       COUNT(DISTINCT user_id)::BIGINT AS active_users
 FROM transactions
 WHERE transaction_date >= CURRENT_DATE - INTERVAL '30 days'
 GROUP BY transaction_date
 ORDER BY transaction_date
 `
 
-type DailyVolumeRow struct {
-	DateStr string `json:"date_str"`
-	Income  int64  `json:"income"`
-	Expense int64  `json:"expense"`
+type DailyActiveUsersRow struct {
+	DateStr     string `json:"date_str"`
+	ActiveUsers int64  `json:"active_users"`
 }
 
-func (q *Queries) DailyVolume(ctx context.Context) ([]DailyVolumeRow, error) {
-	rows, err := q.db.Query(ctx, dailyVolume)
+// ============ ENGAGEMENT ============
+func (q *Queries) DailyActiveUsers(ctx context.Context) ([]DailyActiveUsersRow, error) {
+	rows, err := q.db.Query(ctx, dailyActiveUsers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []DailyVolumeRow
+	var items []DailyActiveUsersRow
 	for rows.Next() {
-		var i DailyVolumeRow
-		if err := rows.Scan(&i.DateStr, &i.Income, &i.Expense); err != nil {
+		var i DailyActiveUsersRow
+		if err := rows.Scan(&i.DateStr, &i.ActiveUsers); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const dailyPageViews = `-- name: DailyPageViews :many
+SELECT created_at::date::TEXT AS date_str,
+       COUNT(*)::BIGINT AS views,
+       COUNT(DISTINCT visitor_hash)::BIGINT AS unique_visitors
+FROM page_views
+WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY created_at::date
+ORDER BY created_at::date
+`
+
+type DailyPageViewsRow struct {
+	DateStr        string `json:"date_str"`
+	Views          int64  `json:"views"`
+	UniqueVisitors int64  `json:"unique_visitors"`
+}
+
+func (q *Queries) DailyPageViews(ctx context.Context) ([]DailyPageViewsRow, error) {
+	rows, err := q.db.Query(ctx, dailyPageViews)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DailyPageViewsRow
+	for rows.Next() {
+		var i DailyPageViewsRow
+		if err := rows.Scan(&i.DateStr, &i.Views, &i.UniqueVisitors); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const dailyTransactionCount = `-- name: DailyTransactionCount :many
+SELECT transaction_date::TEXT AS date_str,
+       COUNT(*)::BIGINT AS tx_count
+FROM transactions
+WHERE transaction_date >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY transaction_date
+ORDER BY transaction_date
+`
+
+type DailyTransactionCountRow struct {
+	DateStr string `json:"date_str"`
+	TxCount int64  `json:"tx_count"`
+}
+
+func (q *Queries) DailyTransactionCount(ctx context.Context) ([]DailyTransactionCountRow, error) {
+	rows, err := q.db.Query(ctx, dailyTransactionCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DailyTransactionCountRow
+	for rows.Next() {
+		var i DailyTransactionCountRow
+		if err := rows.Scan(&i.DateStr, &i.TxCount); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -196,7 +237,68 @@ func (q *Queries) GetDatabaseSize(ctx context.Context) (string, error) {
 	return db_size, err
 }
 
+const hourlyPageViews = `-- name: HourlyPageViews :many
+SELECT EXTRACT(HOUR FROM created_at)::INT AS hour_of_day,
+       COUNT(*)::BIGINT AS views
+FROM page_views
+WHERE created_at::date = CURRENT_DATE
+GROUP BY hour_of_day
+ORDER BY hour_of_day
+`
+
+type HourlyPageViewsRow struct {
+	HourOfDay int32 `json:"hour_of_day"`
+	Views     int64 `json:"views"`
+}
+
+func (q *Queries) HourlyPageViews(ctx context.Context) ([]HourlyPageViewsRow, error) {
+	rows, err := q.db.Query(ctx, hourlyPageViews)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HourlyPageViewsRow
+	for rows.Next() {
+		var i HourlyPageViewsRow
+		if err := rows.Scan(&i.HourOfDay, &i.Views); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const insertPageView = `-- name: InsertPageView :exec
+
+INSERT INTO page_views (path, visitor_hash, user_agent, referrer, is_authenticated)
+VALUES ($1, $2, $3, $4, $5)
+`
+
+type InsertPageViewParams struct {
+	Path            string      `json:"path"`
+	VisitorHash     string      `json:"visitor_hash"`
+	UserAgent       pgtype.Text `json:"user_agent"`
+	Referrer        pgtype.Text `json:"referrer"`
+	IsAuthenticated pgtype.Bool `json:"is_authenticated"`
+}
+
+// ============ PAGE VIEWS / VISITORS ============
+func (q *Queries) InsertPageView(ctx context.Context, arg InsertPageViewParams) error {
+	_, err := q.db.Exec(ctx, insertPageView,
+		arg.Path,
+		arg.VisitorHash,
+		arg.UserAgent,
+		arg.Referrer,
+		arg.IsAuthenticated,
+	)
+	return err
+}
+
 const listAllUsers = `-- name: ListAllUsers :many
+
 SELECT u.id, u.email, u.name, u.telegram_id, u.created_at,
        COUNT(t.id)::BIGINT AS tx_count
 FROM users u
@@ -214,6 +316,7 @@ type ListAllUsersRow struct {
 	TxCount    int64              `json:"tx_count"`
 }
 
+// ============ USERS LIST ============
 func (q *Queries) ListAllUsers(ctx context.Context) ([]ListAllUsersRow, error) {
 	rows, err := q.db.Query(ctx, listAllUsers)
 	if err != nil {
@@ -239,6 +342,28 @@ func (q *Queries) ListAllUsers(ctx context.Context) ([]ListAllUsersRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const newUsersThisMonth = `-- name: NewUsersThisMonth :one
+SELECT COUNT(*)::BIGINT AS total FROM users WHERE created_at::date >= CURRENT_DATE - INTERVAL '30 days'
+`
+
+func (q *Queries) NewUsersThisMonth(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, newUsersThisMonth)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
+const newUsersThisWeek = `-- name: NewUsersThisWeek :one
+SELECT COUNT(*)::BIGINT AS total FROM users WHERE created_at::date >= CURRENT_DATE - INTERVAL '7 days'
+`
+
+func (q *Queries) NewUsersThisWeek(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, newUsersThisWeek)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
 }
 
 const newUsersToday = `-- name: NewUsersToday :one
@@ -303,30 +428,33 @@ func (q *Queries) RecentTransactions(ctx context.Context) ([]RecentTransactionsR
 	return items, nil
 }
 
-const topCategories = `-- name: TopCategories :many
-SELECT category, COUNT(*)::BIGINT AS tx_count, COALESCE(SUM(amount), 0)::BIGINT AS total_amount
-FROM transactions
-GROUP BY category
-ORDER BY tx_count DESC
-LIMIT 5
+const topPages = `-- name: TopPages :many
+SELECT path,
+       COUNT(*)::BIGINT AS views,
+       COUNT(DISTINCT visitor_hash)::BIGINT AS unique_visitors
+FROM page_views
+WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY path
+ORDER BY views DESC
+LIMIT 10
 `
 
-type TopCategoriesRow struct {
-	Category    string `json:"category"`
-	TxCount     int64  `json:"tx_count"`
-	TotalAmount int64  `json:"total_amount"`
+type TopPagesRow struct {
+	Path           string `json:"path"`
+	Views          int64  `json:"views"`
+	UniqueVisitors int64  `json:"unique_visitors"`
 }
 
-func (q *Queries) TopCategories(ctx context.Context) ([]TopCategoriesRow, error) {
-	rows, err := q.db.Query(ctx, topCategories)
+func (q *Queries) TopPages(ctx context.Context) ([]TopPagesRow, error) {
+	rows, err := q.db.Query(ctx, topPages)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []TopCategoriesRow
+	var items []TopPagesRow
 	for rows.Next() {
-		var i TopCategoriesRow
-		if err := rows.Scan(&i.Category, &i.TxCount, &i.TotalAmount); err != nil {
+		var i TopPagesRow
+		if err := rows.Scan(&i.Path, &i.Views, &i.UniqueVisitors); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -337,34 +465,34 @@ func (q *Queries) TopCategories(ctx context.Context) ([]TopCategoriesRow, error)
 	return items, nil
 }
 
-const totalExpense = `-- name: TotalExpense :one
-SELECT COALESCE(SUM(amount), 0)::BIGINT AS total FROM transactions WHERE transaction_type = 'EXPENSE'
+const totalPageViewsAll = `-- name: TotalPageViewsAll :one
+SELECT COUNT(*)::BIGINT AS total FROM page_views
 `
 
-func (q *Queries) TotalExpense(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, totalExpense)
+func (q *Queries) TotalPageViewsAll(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, totalPageViewsAll)
 	var total int64
 	err := row.Scan(&total)
 	return total, err
 }
 
-const totalIncome = `-- name: TotalIncome :one
-SELECT COALESCE(SUM(amount), 0)::BIGINT AS total FROM transactions WHERE transaction_type = 'INCOME'
+const totalPageViewsToday = `-- name: TotalPageViewsToday :one
+SELECT COUNT(*)::BIGINT AS total FROM page_views WHERE created_at::date = CURRENT_DATE
 `
 
-func (q *Queries) TotalIncome(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, totalIncome)
+func (q *Queries) TotalPageViewsToday(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, totalPageViewsToday)
 	var total int64
 	err := row.Scan(&total)
 	return total, err
 }
 
-const totalVolume = `-- name: TotalVolume :one
-SELECT COALESCE(SUM(amount), 0)::BIGINT AS total FROM transactions
+const totalUniqueVisitorsAll = `-- name: TotalUniqueVisitorsAll :one
+SELECT COUNT(DISTINCT visitor_hash)::BIGINT AS total FROM page_views
 `
 
-func (q *Queries) TotalVolume(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, totalVolume)
+func (q *Queries) TotalUniqueVisitorsAll(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, totalUniqueVisitorsAll)
 	var total int64
 	err := row.Scan(&total)
 	return total, err
@@ -381,7 +509,41 @@ func (q *Queries) TransactionsToday(ctx context.Context) (int64, error) {
 	return total, err
 }
 
-const userGrowth = `-- name: UserGrowth :many
+const uniqueVisitorsThisMonth = `-- name: UniqueVisitorsThisMonth :one
+SELECT COUNT(DISTINCT visitor_hash)::BIGINT AS total FROM page_views WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+`
+
+func (q *Queries) UniqueVisitorsThisMonth(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, uniqueVisitorsThisMonth)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
+const uniqueVisitorsThisWeek = `-- name: UniqueVisitorsThisWeek :one
+SELECT COUNT(DISTINCT visitor_hash)::BIGINT AS total FROM page_views WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+`
+
+func (q *Queries) UniqueVisitorsThisWeek(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, uniqueVisitorsThisWeek)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
+const uniqueVisitorsToday = `-- name: UniqueVisitorsToday :one
+SELECT COUNT(DISTINCT visitor_hash)::BIGINT AS total FROM page_views WHERE created_at::date = CURRENT_DATE
+`
+
+func (q *Queries) UniqueVisitorsToday(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, uniqueVisitorsToday)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
+const userGrowthDaily = `-- name: UserGrowthDaily :many
+
 SELECT created_at::date::TEXT AS date_str,
        COUNT(*)::BIGINT AS new_users
 FROM users
@@ -389,20 +551,21 @@ GROUP BY created_at::date
 ORDER BY created_at::date
 `
 
-type UserGrowthRow struct {
+type UserGrowthDailyRow struct {
 	DateStr  string `json:"date_str"`
 	NewUsers int64  `json:"new_users"`
 }
 
-func (q *Queries) UserGrowth(ctx context.Context) ([]UserGrowthRow, error) {
-	rows, err := q.db.Query(ctx, userGrowth)
+// ============ USER GROWTH ============
+func (q *Queries) UserGrowthDaily(ctx context.Context) ([]UserGrowthDailyRow, error) {
+	rows, err := q.db.Query(ctx, userGrowthDaily)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []UserGrowthRow
+	var items []UserGrowthDailyRow
 	for rows.Next() {
-		var i UserGrowthRow
+		var i UserGrowthDailyRow
 		if err := rows.Scan(&i.DateStr, &i.NewUsers); err != nil {
 			return nil, err
 		}

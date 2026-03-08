@@ -9,18 +9,16 @@ import {
   LogOut,
   Zap,
   LayoutDashboard,
-  BarChart3,
+  TrendingUp,
   Users,
-  Receipt,
   Menu,
   X,
 } from "lucide-react";
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/dashboard/analytics", label: "Analitik", icon: BarChart3 },
+  { href: "/admin/dashboard/growth", label: "Growth", icon: TrendingUp },
   { href: "/admin/dashboard/users", label: "Users", icon: Users },
-  { href: "/admin/dashboard/transactions", label: "Transaksi", icon: Receipt },
 ];
 
 export default function AdminDashboardLayout({

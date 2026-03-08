@@ -496,17 +496,27 @@ export const userSettings = {
 };
 
 // Admin
-export interface AdminStats {
+export interface AdminOverviewStats {
   total_users: number;
-  total_transactions: number;
-  active_users_7d: number;
-  total_volume: number;
-  total_income: number;
-  total_expense: number;
-  telegram_users: number;
   new_users_today: number;
+  new_users_week: number;
+  new_users_month: number;
+  active_users_7d: number;
+  active_users_30d: number;
+  telegram_users: number;
+  total_transactions: number;
   tx_today: number;
+  avg_tx_per_user: number;
   database_size: string;
+}
+
+export interface AdminVisitorStats {
+  page_views_today: number;
+  unique_visitors_today: number;
+  unique_visitors_week: number;
+  unique_visitors_month: number;
+  total_page_views: number;
+  total_unique_visitors: number;
 }
 
 export interface AdminUser {
@@ -529,30 +539,28 @@ export interface AdminRecentTx {
   user_email: string;
 }
 
-export interface AdminTopCategory {
-  category: string;
-  tx_count: number;
-  total_amount: number;
-}
-
 export interface AdminDashboard {
-  stats: AdminStats;
+  stats: AdminOverviewStats;
+  visitors: AdminVisitorStats;
   users: AdminUser[];
   recent_transactions: AdminRecentTx[];
-  top_categories: AdminTopCategory[];
 }
 
-export interface AdminDailyVolume {
+export interface AdminDailyPageView {
   date: string;
-  income: number;
-  expense: number;
+  views: number;
+  unique_visitors: number;
 }
 
-export interface AdminCategoryBreakdown {
-  category: string;
-  transaction_type: "INCOME" | "EXPENSE";
-  tx_count: number;
-  total_amount: number;
+export interface AdminTopPage {
+  path: string;
+  views: number;
+  unique_visitors: number;
+}
+
+export interface AdminHourlyView {
+  hour: number;
+  views: number;
 }
 
 export interface AdminUserGrowth {
@@ -560,16 +568,42 @@ export interface AdminUserGrowth {
   new_users: number;
 }
 
-export interface AdminAnalytics {
-  daily_volume: AdminDailyVolume[];
-  categories: AdminCategoryBreakdown[];
+export interface AdminCumulativeUser {
+  date: string;
+  cumulative: number;
+}
+
+export interface AdminDailyActive {
+  date: string;
+  active_users: number;
+}
+
+export interface AdminDailyTxCount {
+  date: string;
+  tx_count: number;
+}
+
+export interface AdminGrowth {
+  daily_page_views: AdminDailyPageView[];
+  top_pages: AdminTopPage[];
+  hourly_views: AdminHourlyView[];
   user_growth: AdminUserGrowth[];
+  cumulative_users: AdminCumulativeUser[];
+  daily_active_users: AdminDailyActive[];
+  daily_tx_count: AdminDailyTxCount[];
 }
 
 export const adminApi = {
   check: () => request<{ is_admin: boolean }>("/api/admin/check"),
   dashboard: () => request<AdminDashboard>("/api/admin/dashboard"),
-  analytics: () => request<AdminAnalytics>("/api/admin/analytics"),
-  transactions: () =>
-    request<{ transactions: AdminRecentTx[] }>("/api/admin/transactions"),
+  growth: () => request<AdminGrowth>("/api/admin/growth"),
+};
+
+// Page view tracking (public, no auth)
+export const trackPageView = (path: string, referrer?: string) => {
+  fetch(`${API_BASE}/api/track`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, referrer: referrer || "" }),
+  }).catch(() => {});
 };

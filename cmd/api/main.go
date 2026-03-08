@@ -197,11 +197,13 @@ func main() {
 
 	adminGroup := api.Group("/admin", userHandler.AuthMiddleware, adminHandler.AdminOnly)
 	adminGroup.Get("/dashboard", adminHandler.Dashboard)
-	adminGroup.Get("/analytics", adminHandler.Analytics)
-	adminGroup.Get("/transactions", adminHandler.AllTransactions)
+	adminGroup.Get("/growth", adminHandler.Growth)
 
 	// Check admin status (auth required, no admin-only)
 	api.Get("/admin/check", userHandler.AuthMiddleware, adminHandler.CheckAdmin)
+
+	// Public page view tracking (no auth required)
+	api.Post("/track", adminHandler.TrackPageView)
 
 	// Telegram bot info (public)
 	telegramBotUsername := os.Getenv("TELEGRAM_BOT_USERNAME")

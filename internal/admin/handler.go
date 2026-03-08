@@ -51,24 +51,35 @@ func (h *Handler) CheckAdmin(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) Analytics(c *fiber.Ctx) error {
-	data, err := h.service.GetAnalytics(c.Context())
+func (h *Handler) Growth(c *fiber.Ctx) error {
+	data, err := h.service.GetGrowth(c.Context())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "gagal ambil data analitik",
+			"error": "gagal ambil data growth",
 		})
 	}
 	return c.JSON(data)
 }
 
-func (h *Handler) AllTransactions(c *fiber.Ctx) error {
-	data, err := h.service.GetAllTransactions(c.Context())
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "gagal ambil data transaksi",
-		})
+func (h *Handler) TrackPageView(c *fiber.Ctx) error {
+	var body struct {
+		Path     string `json:"path"`
+		Referrer string `json:"referrer"`
 	}
-	return c.JSON(fiber.Map{
-		"transactions": data,
-	})
+	if err := c.BodyParser(&body); err != nil || body.Path == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "path wajib diisi"})
+	}
+
+	ip := c.Get("X-Real-IP")
+	if ip == "" {
+		ip = c.Get("X-Forwarded-For")
+	}
+	if ip == "" {
+		ip = c.IP()
+	}
+	ua := c.Get("User-Agent")
+	_, isAuth := c.Locals("user_email").(string)
+
+	_ = h.service.TrackPageView(c.Context(), body.Path, ip, ua, body.Referrer, isAuth)
+	return c.JSON(fiber.Map{"ok": true})
 }

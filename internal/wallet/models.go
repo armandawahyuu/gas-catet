@@ -34,6 +34,16 @@ type Goal struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
+type PageView struct {
+	ID              int64              `json:"id"`
+	Path            string             `json:"path"`
+	VisitorHash     string             `json:"visitor_hash"`
+	UserAgent       pgtype.Text        `json:"user_agent"`
+	Referrer        pgtype.Text        `json:"referrer"`
+	IsAuthenticated pgtype.Bool        `json:"is_authenticated"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
 type RecurringTransaction struct {
 	ID              pgtype.UUID        `json:"id"`
 	UserID          pgtype.UUID        `json:"user_id"`
