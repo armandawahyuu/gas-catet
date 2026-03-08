@@ -16,6 +16,7 @@ const (
 	StateWaitingWallet     = 6
 	StateWaitingConfirm    = 7
 	StateReceiptConfirm    = 8
+	StateReceiptWallet     = 9
 )
 
 // Transaction type constants

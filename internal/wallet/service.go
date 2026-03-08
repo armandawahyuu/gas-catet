@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -18,6 +19,7 @@ var (
 
 type Service struct {
 	queries *Queries
+	pool    *pgxpool.Pool
 }
 
 type WalletResponse struct {
@@ -57,8 +59,8 @@ type TransferResponse struct {
 	CreatedAt      string `json:"created_at"`
 }
 
-func NewService(queries *Queries) *Service {
-	return &Service{queries: queries}
+func NewService(queries *Queries, pool *pgxpool.Pool) *Service {
+	return &Service{queries: queries, pool: pool}
 }
 
 func (s *Service) List(ctx context.Context, userID pgtype.UUID) ([]WalletResponse, error) {
@@ -200,8 +202,17 @@ func (s *Service) Transfer(ctx context.Context, userID pgtype.UUID, req Transfer
 		return TransferResponse{}, ErrSameWallet
 	}
 
+	// Begin DB transaction for atomic transfer
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return TransferResponse{}, fmt.Errorf("gagal mulai transaksi: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
 	// Verify wallets belong to user & check balance
-	fromWallet, err := s.queries.GetWalletByID(ctx, GetWalletByIDParams{ID: fromID, UserID: userID})
+	fromWallet, err := qtx.GetWalletByID(ctx, GetWalletByIDParams{ID: fromID, UserID: userID})
 	if err != nil {
 		return TransferResponse{}, fmt.Errorf("dompet asal tidak ditemukan: %w", err)
 	}
@@ -209,21 +220,21 @@ func (s *Service) Transfer(ctx context.Context, userID pgtype.UUID, req Transfer
 		return TransferResponse{}, ErrInsufficientFunds
 	}
 
-	_, err = s.queries.GetWalletByID(ctx, GetWalletByIDParams{ID: toID, UserID: userID})
+	toWallet, err := qtx.GetWalletByID(ctx, GetWalletByIDParams{ID: toID, UserID: userID})
 	if err != nil {
 		return TransferResponse{}, fmt.Errorf("dompet tujuan tidak ditemukan: %w", err)
 	}
 
 	// Deduct from source, add to destination
-	if err := s.queries.UpdateWalletBalance(ctx, UpdateWalletBalanceParams{ID: fromID, Balance: -req.Amount}); err != nil {
+	if err := qtx.UpdateWalletBalance(ctx, UpdateWalletBalanceParams{ID: fromID, Balance: -req.Amount}); err != nil {
 		return TransferResponse{}, fmt.Errorf("gagal kurangi saldo: %w", err)
 	}
-	if err := s.queries.UpdateWalletBalance(ctx, UpdateWalletBalanceParams{ID: toID, Balance: req.Amount}); err != nil {
+	if err := qtx.UpdateWalletBalance(ctx, UpdateWalletBalanceParams{ID: toID, Balance: req.Amount}); err != nil {
 		return TransferResponse{}, fmt.Errorf("gagal tambah saldo: %w", err)
 	}
 
 	// Create transfer record
-	t, err := s.queries.CreateTransfer(ctx, CreateTransferParams{
+	t, err := qtx.CreateTransfer(ctx, CreateTransferParams{
 		UserID:       userID,
 		FromWalletID: fromID,
 		ToWalletID:   toID,
@@ -234,14 +245,18 @@ func (s *Service) Transfer(ctx context.Context, userID pgtype.UUID, req Transfer
 		return TransferResponse{}, fmt.Errorf("gagal catat transfer: %w", err)
 	}
 
+	if err := tx.Commit(ctx); err != nil {
+		return TransferResponse{}, fmt.Errorf("gagal commit transfer: %w", err)
+	}
+
 	return TransferResponse{
 		ID:             uuidToString(t.ID),
 		FromWalletID:   req.FromWalletID,
 		FromWalletName: fromWallet.Name,
 		FromWalletIcon: fromWallet.Icon,
 		ToWalletID:     req.ToWalletID,
-		ToWalletName:   "",
-		ToWalletIcon:   "",
+		ToWalletName:   toWallet.Name,
+		ToWalletIcon:   toWallet.Icon,
 		Amount:         t.Amount,
 		Note:           t.Note,
 		CreatedAt:      t.CreatedAt.Time.Format("2006-01-02 15:04"),
@@ -277,7 +292,15 @@ func (s *Service) ListTransfers(ctx context.Context, userID pgtype.UUID, limit, 
 }
 
 func (s *Service) DeleteTransfer(ctx context.Context, userID, transferID pgtype.UUID) error {
-	row, err := s.queries.DeleteTransfer(ctx, DeleteTransferParams{
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("gagal mulai transaksi: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	row, err := qtx.DeleteTransfer(ctx, DeleteTransferParams{
 		ID:     transferID,
 		UserID: userID,
 	})
@@ -286,10 +309,14 @@ func (s *Service) DeleteTransfer(ctx context.Context, userID, transferID pgtype.
 	}
 
 	// Reverse the balance changes
-	_ = s.queries.UpdateWalletBalance(ctx, UpdateWalletBalanceParams{ID: row.FromWalletID, Balance: row.Amount})
-	_ = s.queries.UpdateWalletBalance(ctx, UpdateWalletBalanceParams{ID: row.ToWalletID, Balance: -row.Amount})
+	if err := qtx.UpdateWalletBalance(ctx, UpdateWalletBalanceParams{ID: row.FromWalletID, Balance: row.Amount}); err != nil {
+		return fmt.Errorf("gagal kembalikan saldo asal: %w", err)
+	}
+	if err := qtx.UpdateWalletBalance(ctx, UpdateWalletBalanceParams{ID: row.ToWalletID, Balance: -row.Amount}); err != nil {
+		return fmt.Errorf("gagal kembalikan saldo tujuan: %w", err)
+	}
 
-	return nil
+	return tx.Commit(ctx)
 }
 
 func uuidToString(u pgtype.UUID) string {

@@ -72,7 +72,7 @@ func main() {
 	catHandler := category.NewHandler(catService)
 
 	walQueries := wallet.New(pool)
-	walService := wallet.NewService(walQueries)
+	walService := wallet.NewService(walQueries, pool)
 	walHandler := wallet.NewHandler(walService)
 
 	txHandler := transaction.NewHandler(txService, walService)

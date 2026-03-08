@@ -111,6 +111,8 @@ func (h *Handler) handleMessage(msg *Message) {
 		h.sendMessage(chatID, "⚠️ Pakai tombol di atas ya bos — ✅ Simpan atau ✏️ Edit.")
 	case StateReceiptConfirm:
 		h.sendMessage(chatID, "⚠️ Pakai tombol di atas ya bos — ✅ Simpan, ✏️ Edit, atau ❌ Batal.")
+	case StateReceiptWallet:
+		h.sendMessage(chatID, "⚠️ Pilih dompet pakai tombol di atas ya bos.")
 	default:
 		h.sendMainMenu(chatID)
 	}
@@ -197,6 +199,8 @@ func (h *Handler) handleCallback(cb *CallbackQuery) {
 		h.sendMainMenu(chatID)
 	case data == "receipt_save":
 		h.handleReceiptSave(chatID, cb.From.ID)
+	case strings.HasPrefix(data, "receipt_wal_"):
+		h.handleReceiptWalletSelection(chatID, cb.From.ID, strings.TrimPrefix(data, "receipt_wal_"))
 	case data == "receipt_edit":
 		h.fsm.ResetSession(chatID)
 		h.sendMessage(chatID, "✏️ Oke, coba kirim ulang foto struk-nya ya bos!")
@@ -740,9 +744,9 @@ func (h *Handler) handlePhoto(chatID, telegramID int64, photos []Photo) {
 		return
 	}
 
-	// Save to FSM session for confirmation
+	// Save to FSM session for wallet selection
 	h.fsm.SetSession(chatID, &UserSession{
-		State:           StateReceiptConfirm,
+		State:           StateReceiptWallet,
 		TransactionType: TypeExpense,
 		Category:        data.Category,
 		Description:     data.Description,
@@ -751,8 +755,110 @@ func (h *Handler) handlePhoto(chatID, telegramID int64, photos []Photo) {
 		ReceiptFileID:   photo.FileID,
 	})
 
-	// Show confirmation
-	msg := formatReceiptConfirmation(data)
+	// Show wallet selection for receipt
+	ctx := context.Background()
+	userRow, err := h.getUserByTelegramID(ctx, telegramID)
+	if err != nil {
+		h.sendMessage(chatID, "⚠️ Gagal ambil data user.")
+		h.fsm.ResetSession(chatID)
+		return
+	}
+
+	wallets, err := h.walSvc.List(ctx, userRow.ID)
+	if err != nil || len(wallets) == 0 {
+		// No wallets — skip to confirmation
+		session := h.fsm.GetSession(chatID)
+		session.State = StateReceiptConfirm
+		h.fsm.SetSession(chatID, session)
+		msg := formatReceiptConfirmation(data)
+		_ = h.bot.SendMessage(SendMessageRequest{
+			ChatID:    chatID,
+			Text:      msg,
+			ParseMode: "Markdown",
+			ReplyMarkup: &ReplyMarkup{
+				InlineKeyboard: [][]InlineKeyboardButton{
+					{
+						{Text: "✅ Simpan", CallbackData: "receipt_save"},
+						{Text: "✏️ Kirim Ulang", CallbackData: "receipt_edit"},
+						{Text: "❌ Batal", CallbackData: "cancel"},
+					},
+				},
+			},
+		})
+		return
+	}
+
+	buttons := make([][]InlineKeyboardButton, 0, len(wallets)/2+2)
+	row := make([]InlineKeyboardButton, 0, 2)
+	for _, w := range wallets {
+		row = append(row, InlineKeyboardButton{Text: w.Icon + " " + w.Name, CallbackData: "receipt_wal_" + w.ID})
+		if len(row) == 2 {
+			buttons = append(buttons, row)
+			row = make([]InlineKeyboardButton, 0, 2)
+		}
+	}
+	if len(row) > 0 {
+		buttons = append(buttons, row)
+	}
+	buttons = append(buttons, []InlineKeyboardButton{{Text: "⏭️ Tanpa Dompet", CallbackData: "receipt_wal_skip"}})
+	buttons = append(buttons, []InlineKeyboardButton{{Text: "❌ Batal", CallbackData: "cancel"}})
+
+	receiptMsg := formatReceiptConfirmation(data)
+	_ = h.bot.SendMessage(SendMessageRequest{
+		ChatID:    chatID,
+		Text:      receiptMsg + "\n\n👛 *Dari dompet mana?*",
+		ParseMode: "Markdown",
+		ReplyMarkup: &ReplyMarkup{
+			InlineKeyboard: buttons,
+		},
+	})
+}
+
+// handleReceiptWalletSelection handles wallet selection after receipt OCR
+func (h *Handler) handleReceiptWalletSelection(chatID, telegramID int64, walletData string) {
+	session := h.fsm.GetSession(chatID)
+	if session.State != StateReceiptWallet {
+		h.sendMainMenu(chatID)
+		return
+	}
+
+	if walletData != "skip" {
+		session.WalletID = walletData
+		// Get wallet name for display
+		ctx := context.Background()
+		userRow, err := h.getUserByTelegramID(ctx, telegramID)
+		if err == nil {
+			var wID pgtype.UUID
+			_ = wID.Scan(walletData)
+			w, err := h.walSvc.GetByID(ctx, userRow.ID, wID)
+			if err == nil {
+				session.WalletName = w.Name
+			}
+		}
+	}
+
+	session.State = StateReceiptConfirm
+	h.fsm.SetSession(chatID, session)
+
+	walletLine := ""
+	if session.WalletName != "" {
+		walletLine = fmt.Sprintf("\n👛 Dompet: %s", session.WalletName)
+	}
+
+	msg := fmt.Sprintf("📸 *Konfirmasi Struk*\n\n"+
+		"💸 Pengeluaran\n"+
+		"📝 %s\n"+
+		"🏷️ %s\n"+
+		"💵 %s\n"+
+		"📅 %s%s\n\n"+
+		"_Udah bener? Tap ✅ buat simpan!_",
+		session.Description,
+		session.Category,
+		formatRupiah(session.Amount),
+		session.TxDate,
+		walletLine,
+	)
+
 	_ = h.bot.SendMessage(SendMessageRequest{
 		ChatID:    chatID,
 		Text:      msg,
@@ -789,6 +895,7 @@ func (h *Handler) handleReceiptSave(chatID, telegramID int64) {
 		TransactionType: session.TransactionType,
 		Description:     session.Description,
 		Category:        session.Category,
+		WalletID:        session.WalletID,
 		TransactionDate: session.TxDate,
 	})
 
@@ -799,16 +906,29 @@ func (h *Handler) handleReceiptSave(chatID, telegramID int64) {
 		return
 	}
 
+	// Update wallet balance
+	if session.WalletID != "" {
+		var wID pgtype.UUID
+		_ = wID.Scan(session.WalletID)
+		_ = h.walSvc.UpdateBalance(ctx, wID, -session.Amount)
+	}
+
+	walletLine := ""
+	if session.WalletName != "" {
+		walletLine = fmt.Sprintf("\n👛 %s", session.WalletName)
+	}
+
 	msg := fmt.Sprintf("✅ Struk berhasil dicatat!\n\n"+
 		"💸 Pengeluaran\n"+
 		"📝 %s\n"+
 		"🏷️ %s\n"+
 		"💵 %s\n"+
-		"📅 %s",
+		"📅 %s%s",
 		session.Description,
 		session.Category,
 		formatRupiah(session.Amount),
 		session.TxDate,
+		walletLine,
 	)
 
 	h.sendMessage(chatID, msg)
