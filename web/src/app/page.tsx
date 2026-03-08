@@ -184,9 +184,9 @@ export default function Home() {
   }, [handleScroll]);
 
   const features = [
-    { icon: Send, color: "#00C781", title: "Bot Telegram", desc: "Catat pengeluaran langsung dari chat Telegram. Ketik aja, beres." },
+    { icon: Send, color: "#00C781", title: "Bot Telegram", desc: "Catat pengeluaran dari chat Telegram. Quick add, guided flow, laporan otomatis jam 8 malam." },
     { icon: Wallet, color: "#FFCC00", title: "Multi Dompet", desc: "Pisahin duit cash, bank, e-wallet. Semua rapi di satu tempat." },
-    { icon: PieChart, color: "#FF3B30", title: "Anggaran", desc: "Set budget per kategori. Biar tau kapan harus rem pengeluaran." },
+    { icon: PieChart, color: "#FF3B30", title: "Anggaran", desc: "Set budget per kategori atau pakai template (50/30/20, 6 Jars). Auto-tracking biar gak over." },
     { icon: Target, color: "#00C781", title: "Target Tabungan", desc: "Mau nabung buat liburan? HP baru? Track progress-nya di sini." },
     { icon: Repeat, color: "#FFCC00", title: "Transaksi Berulang", desc: "Bayar kos, Netflix, Spotify? Auto-catat tiap bulan tanpa ribet." },
     { icon: BarChart3, color: "#FF3B30", title: "Analitik", desc: "Grafik pengeluaran harian, mingguan, bulanan. Visual yang jelas." },
@@ -437,9 +437,9 @@ export default function Home() {
                   dari <span style={{ color: "#FF3B30" }}>Chat Telegram</span>
                 </h2>
                 <p className="text-base leading-relaxed mb-6" style={{ color: "#444" }}>
-                  Gak perlu buka app. Tinggal chat bot, ketik transaksi kamu, selesai.
-                  Bot-nya ngerti bahasa manusia — ketik &quot;makan siang 25rb&quot; dan
-                  langsung tercatat.
+                  Gak perlu buka app. Tinggal chat bot, pilih menu atau ketik
+                  quick command — langsung tercatat dalam 5 detik. Ada konfirmasi
+                  sebelum simpan, jadi gak takut salah input.
                 </p>
 
                 {/* Chat mockup */}
@@ -454,28 +454,28 @@ export default function Home() {
                   <div className="p-4 space-y-3 text-sm" style={{ background: "#F5F5F5" }}>
                     <div className="flex justify-end">
                       <div className="neo-border px-3 py-2 max-w-[75%]" style={{ background: "#FFCC00" }}>
-                        makan siang nasi padang 28rb
+                        /catat 25000 kopi susu
                       </div>
                     </div>
                     <div className="flex justify-start">
                       <div className="neo-border px-3 py-2 max-w-[75%]" style={{ background: "white" }}>
-                        ✅ <strong>Tercatat!</strong>
+                        ✅ <strong>Gas! Udah dicatet bos!</strong>
                         <br />
-                        📝 Makan siang nasi padang
+                        📝 kopi susu
                         <br />
-                        💰 -Rp28.000
+                        💰 Rp25.000
                         <br />
-                        🏷️ Makanan
+                        🏷️ Lainnya
                       </div>
                     </div>
                     <div className="flex justify-end">
                       <div className="neo-border px-3 py-2 max-w-[75%]" style={{ background: "#FFCC00" }}>
-                        /ringkasan
+                        /saldo
                       </div>
                     </div>
                     <div className="flex justify-start">
                       <div className="neo-border px-3 py-2 max-w-[75%]" style={{ background: "white" }}>
-                        📊 <strong>Bulan Ini</strong>
+                        💰 <strong>Ringkasan Bulan Ini</strong>
                         <br />
                         Pemasukan: Rp5.000.000
                         <br />
@@ -495,12 +495,12 @@ export default function Home() {
                   Command yang Bisa Kamu Pake:
                 </h3>
                 {[
-                  { cmd: "/catat", desc: "Catat transaksi baru" },
-                  { cmd: "/ringkasan", desc: "Liat ringkasan bulan ini" },
-                  { cmd: "/hari_ini", desc: "Transaksi hari ini" },
-                  { cmd: "/dompet", desc: "Cek saldo semua dompet" },
-                  { cmd: "/kategori", desc: "Liat daftar kategori" },
-                  { cmd: "Ketik langsung", desc: '"kopi susu 18rb" — auto tercatat!' },
+                  { cmd: "/start", desc: "Mulai catat — pilih pengeluaran atau pemasukan" },
+                  { cmd: "/catat 25rb kopi", desc: "Quick add pengeluaran instan" },
+                  { cmd: "/masuk 5jt gaji", desc: "Quick add pemasukan instan" },
+                  { cmd: "/saldo", desc: "Ringkasan saldo bulan ini" },
+                  { cmd: "/laporan", desc: "Laporan lengkap hari ini & bulan ini" },
+                  { cmd: "/akun", desc: "Cek info akun yang terhubung" },
                 ].map((item, i) => (
                   <div key={i} className="neo-card p-4 flex items-center gap-4 group">
                     <code
