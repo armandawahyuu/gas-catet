@@ -19,7 +19,7 @@ SELECT COALESCE(SUM(amount), 0)::BIGINT AS total FROM transactions WHERE transac
 SELECT COALESCE(SUM(amount), 0)::BIGINT AS total FROM transactions WHERE transaction_type = 'EXPENSE';
 
 -- name: CountTelegramUsers :one
-SELECT COUNT(*)::BIGINT AS total FROM users WHERE telegram_id IS NOT NULL AND telegram_id != '';
+SELECT COUNT(*)::BIGINT AS total FROM users WHERE telegram_id IS NOT NULL;
 
 -- name: NewUsersToday :one
 SELECT COUNT(*)::BIGINT AS total FROM users WHERE created_at::date = CURRENT_DATE;

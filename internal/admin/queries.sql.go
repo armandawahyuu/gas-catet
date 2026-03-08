@@ -25,7 +25,7 @@ func (q *Queries) CountActiveUsers(ctx context.Context) (int64, error) {
 }
 
 const countTelegramUsers = `-- name: CountTelegramUsers :one
-SELECT COUNT(*)::BIGINT AS total FROM users WHERE telegram_id IS NOT NULL AND telegram_id != ''
+SELECT COUNT(*)::BIGINT AS total FROM users WHERE telegram_id IS NOT NULL
 `
 
 func (q *Queries) CountTelegramUsers(ctx context.Context) (int64, error) {
