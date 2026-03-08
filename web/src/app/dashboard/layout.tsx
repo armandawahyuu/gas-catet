@@ -18,10 +18,8 @@ import {
   PiggyBank,
   RefreshCw,
   Target,
-  Shield,
 } from "lucide-react";
 import { useState } from "react";
-import { adminApi } from "@/lib/api";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -44,14 +42,10 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!loading && !profile) {
       router.push("/login");
-    }
-    if (profile) {
-      adminApi.check().then((r) => setIsAdmin(r.is_admin)).catch(() => {});
     }
   }, [loading, profile, router]);
 
@@ -147,16 +141,6 @@ export default function DashboardLayout({
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="flex items-center gap-2 text-sm font-heading font-bold uppercase tracking-wider hover:opacity-70 transition-opacity"
-                style={{ color: "#FF3B30" }}
-              >
-                <Shield size={16} strokeWidth={2.5} />
-                Admin
-              </Link>
-            )}
             <button
               onClick={logout}
               className="flex items-center gap-2 text-sm font-heading font-bold uppercase tracking-wider hover:opacity-70 transition-opacity"

@@ -1,235 +1,144 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  adminApi,
-  AdminDashboard,
-} from "@/lib/api";
-import {
-  Users,
-  Receipt,
-  Activity,
-  Database,
-  TrendingUp,
-  MessageCircle,
-  Shield,
-} from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { auth, adminApi } from "@/lib/api";
+import { Shield, Eye, EyeOff } from "lucide-react";
 
-function formatRupiah(n: number) {
-  return "Rp " + n.toLocaleString("id-ID");
-}
+export default function AdminLoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-export default function AdminPage() {
-  const [data, setData] = useState<AdminDashboard | null>(null);
-  const [loading, setLoading] = useState(true);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-  useEffect(() => {
-    adminApi
-      .dashboard()
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, []);
+    try {
+      const res = await auth.login(email, password);
+      localStorage.setItem("token", res.token);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="font-heading text-xl font-bold animate-pulse text-white">
-          Loading data...
-        </div>
-      </div>
-    );
-  }
+      // Check if this user is admin
+      const check = await adminApi.check();
+      if (!check.is_admin) {
+        localStorage.removeItem("token");
+        setError("Akun ini bukan admin.");
+        setLoading(false);
+        return;
+      }
 
-  if (!data) return null;
-
-  const { stats, users, recent_transactions } = data;
+      router.push("/admin/dashboard");
+    } catch {
+      setError("Email atau password salah.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div
-          className="neo-border neo-shadow p-4"
-          style={{ background: "#E8F5E9" }}
-        >
-          <Users size={20} strokeWidth={2.5} className="mb-2" />
-          <p
-            className="text-xs font-heading font-bold uppercase"
-            style={{ color: "#666" }}
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{ background: "#0A0A0A" }}
+    >
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div
+            className="w-16 h-16 flex items-center justify-center neo-border mb-4"
+            style={{ background: "#FF3B30" }}
           >
-            Total Users
-          </p>
-          <p className="font-heading text-2xl font-bold">{stats.total_users}</p>
-        </div>
-
-        <div
-          className="neo-border neo-shadow p-4"
-          style={{ background: "#E3F2FD" }}
-        >
-          <Receipt size={20} strokeWidth={2.5} className="mb-2" />
-          <p
-            className="text-xs font-heading font-bold uppercase"
-            style={{ color: "#666" }}
-          >
-            Total Transaksi
-          </p>
-          <p className="font-heading text-2xl font-bold">
-            {stats.total_transactions}
-          </p>
-        </div>
-
-        <div
-          className="neo-border neo-shadow p-4"
-          style={{ background: "#FFF3E0" }}
-        >
-          <Activity size={20} strokeWidth={2.5} className="mb-2" />
-          <p
-            className="text-xs font-heading font-bold uppercase"
-            style={{ color: "#666" }}
-          >
-            Aktif 7 Hari
-          </p>
-          <p className="font-heading text-2xl font-bold">
-            {stats.active_users_7d}
-          </p>
-        </div>
-
-        <div
-          className="neo-border neo-shadow p-4"
-          style={{ background: "#FFCC00" }}
-        >
-          <TrendingUp size={20} strokeWidth={2.5} className="mb-2" />
-          <p
-            className="text-xs font-heading font-bold uppercase"
-            style={{ color: "#666" }}
-          >
-            Total Volume
-          </p>
-          <p className="font-heading text-lg font-bold">
-            {formatRupiah(stats.total_volume)}
-          </p>
-        </div>
-
-        <div
-          className="neo-border neo-shadow p-4"
-          style={{ background: "#F3E5F5" }}
-        >
-          <Database size={20} strokeWidth={2.5} className="mb-2" />
-          <p
-            className="text-xs font-heading font-bold uppercase"
-            style={{ color: "#666" }}
-          >
-            Database Size
-          </p>
-          <p className="font-heading text-2xl font-bold">
-            {stats.database_size}
-          </p>
-        </div>
-      </div>
-
-      {/* Two columns: Users + Recent Transactions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Users Table */}
-        <div className="neo-border p-5" style={{ background: "#FFFFFF" }}>
-          <h2 className="font-heading text-lg font-bold mb-4 flex items-center gap-2">
-            <Users size={18} strokeWidth={2.5} />
-            Semua Users ({users.length})
-          </h2>
-          <div className="space-y-3 max-h-[500px] overflow-y-auto">
-            {users.map((u) => (
-              <div
-                key={u.id}
-                className="neo-border p-3 flex items-center justify-between"
-                style={{ background: "#FAFAFA" }}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-heading text-sm font-bold truncate">
-                    {u.name}
-                  </p>
-                  <p className="text-xs truncate" style={{ color: "#666" }}>
-                    {u.email}
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: "#999" }}>
-                    {new Date(u.created_at).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 ml-3">
-                  {u.has_telegram && (
-                    <MessageCircle
-                      size={16}
-                      strokeWidth={2.5}
-                      style={{ color: "#0088cc" }}
-                    />
-                  )}
-                  <div
-                    className="neo-border px-2 py-1 text-xs font-heading font-bold text-center"
-                    style={{ background: "#E3F2FD", minWidth: 50 }}
-                  >
-                    {u.tx_count} tx
-                  </div>
-                </div>
-              </div>
-            ))}
-            {users.length === 0 && (
-              <p className="text-center text-sm" style={{ color: "#999" }}>
-                Belum ada user
-              </p>
-            )}
+            <Shield size={32} strokeWidth={2.5} className="text-white" />
           </div>
+          <h1 className="font-heading text-2xl font-bold text-white">
+            Admin Panel
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "#666" }}>
+            GasCatet Owner Access
+          </p>
         </div>
 
-        {/* Recent Transactions */}
-        <div className="neo-border p-5" style={{ background: "#FFFFFF" }}>
-          <h2 className="font-heading text-lg font-bold mb-4 flex items-center gap-2">
-            <Receipt size={18} strokeWidth={2.5} />
-            10 Transaksi Terbaru
-          </h2>
-          <div className="space-y-3 max-h-[500px] overflow-y-auto">
-            {recent_transactions.map((tx) => (
+        {/* Login Form */}
+        <form onSubmit={handleLogin}>
+          <div
+            className="neo-border p-6 space-y-4"
+            style={{ background: "#1A1A1A" }}
+          >
+            {error && (
               <div
-                key={tx.id}
-                className="neo-border p-3"
-                style={{ background: "#FAFAFA" }}
+                className="neo-border px-4 py-2 text-sm font-heading font-bold"
+                style={{ background: "#FF3B30", color: "#FFF" }}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-heading text-sm font-bold truncate flex-1">
-                    {tx.description || tx.category}
-                  </p>
-                  <span
-                    className="font-heading text-sm font-bold ml-2"
-                    style={{
-                      color:
-                        tx.transaction_type === "INCOME"
-                          ? "#00C781"
-                          : "#FF3B30",
-                    }}
-                  >
-                    {tx.transaction_type === "INCOME" ? "+" : "-"}
-                    {formatRupiah(tx.amount)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs" style={{ color: "#666" }}>
-                    {tx.user_name}{" "}
-                    <span style={{ color: "#999" }}>({tx.user_email})</span>
-                  </p>
-                  <p className="text-xs" style={{ color: "#999" }}>
-                    {tx.transaction_date}
-                  </p>
-                </div>
+                {error}
               </div>
-            ))}
-            {recent_transactions.length === 0 && (
-              <p className="text-center text-sm" style={{ color: "#999" }}>
-                Belum ada transaksi
-              </p>
             )}
+
+            <div>
+              <label
+                className="block text-xs font-heading font-bold uppercase tracking-wider mb-2"
+                style={{ color: "#888" }}
+              >
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 neo-border font-heading text-sm font-bold"
+                style={{ background: "#0F0F0F", color: "#FFF" }}
+                placeholder="admin@gascatet.id"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                className="block text-xs font-heading font-bold uppercase tracking-wider mb-2"
+                style={{ color: "#888" }}
+              >
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 neo-border font-heading text-sm font-bold pr-12"
+                  style={{ background: "#0F0F0F", color: "#FFF" }}
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  style={{ color: "#666" }}
+                >
+                  {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 neo-border font-heading text-sm font-bold uppercase tracking-wider transition-all hover:opacity-90 disabled:opacity-50"
+              style={{ background: "#FF3B30", color: "#FFF" }}
+            >
+              {loading ? "Authenticating..." : "Login as Admin"}
+            </button>
           </div>
-        </div>
+        </form>
+
+        <p
+          className="text-center text-xs mt-6"
+          style={{ color: "#444" }}
+        >
+          Hanya pemilik aplikasi yang bisa mengakses halaman ini.
+        </p>
       </div>
     </div>
   );
