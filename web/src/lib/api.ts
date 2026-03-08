@@ -494,3 +494,43 @@ export const userSettings = {
       body: JSON.stringify({ current_password, new_password }),
     }),
 };
+
+// Admin
+export interface AdminStats {
+  total_users: number;
+  total_transactions: number;
+  active_users_7d: number;
+  total_volume: number;
+  database_size: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  has_telegram: boolean;
+  tx_count: number;
+  created_at: string;
+}
+
+export interface AdminRecentTx {
+  id: string;
+  amount: number;
+  transaction_type: "INCOME" | "EXPENSE";
+  description: string;
+  category: string;
+  transaction_date: string;
+  user_name: string;
+  user_email: string;
+}
+
+export interface AdminDashboard {
+  stats: AdminStats;
+  users: AdminUser[];
+  recent_transactions: AdminRecentTx[];
+}
+
+export const adminApi = {
+  check: () => request<{ is_admin: boolean }>("/api/admin/check"),
+  dashboard: () => request<AdminDashboard>("/api/admin/dashboard"),
+};

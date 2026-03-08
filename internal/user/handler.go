@@ -220,7 +220,7 @@ func (h *Handler) AuthMiddleware(c *fiber.Ctx) error {
 		})
 	}
 
-	userID, err := h.service.ValidateJWT(tokenString)
+	userID, email, err := h.service.ValidateJWT(tokenString)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "token tidak valid atau sudah kadaluarsa",
@@ -228,5 +228,6 @@ func (h *Handler) AuthMiddleware(c *fiber.Ctx) error {
 	}
 
 	c.Locals("user_id", userID)
+	c.Locals("user_email", email)
 	return c.Next()
 }

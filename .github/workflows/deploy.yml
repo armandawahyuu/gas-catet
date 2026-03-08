@@ -16,7 +16,6 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           command_timeout: 12m
-          script_stop: true
           script: |
             cd /home/ubuntu/gas-catet
             git pull origin main

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"gas-catet/internal/admin"
 	"gas-catet/internal/analytics"
 	"gas-catet/internal/category"
 	"gas-catet/internal/database"
@@ -80,6 +81,10 @@ func main() {
 	goalQueries := goal.New(pool)
 	goalService := goal.NewService(goalQueries)
 	goalHandler := goal.NewHandler(goalService)
+
+	adminQueries := admin.New(pool)
+	adminService := admin.NewService(adminQueries)
+	adminHandler := admin.NewHandler(adminService)
 
 	// Start recurring transactions scheduler
 	recService.StartScheduler(ctx)
@@ -189,6 +194,12 @@ func main() {
 	analyticsGroup.Get("/trend", analyticsHandler.Trend)
 	analyticsGroup.Get("/top-expenses", analyticsHandler.TopExpenses)
 	analyticsGroup.Get("/categories", analyticsHandler.Categories)
+
+	adminGroup := api.Group("/admin", userHandler.AuthMiddleware, adminHandler.AdminOnly)
+	adminGroup.Get("/dashboard", adminHandler.Dashboard)
+
+	// Check admin status (auth required, no admin-only)
+	api.Get("/admin/check", userHandler.AuthMiddleware, adminHandler.CheckAdmin)
 
 	// Telegram bot info (public)
 	telegramBotUsername := os.Getenv("TELEGRAM_BOT_USERNAME")

@@ -216,7 +216,7 @@ func (s *Service) generateJWT(userID pgtype.UUID, email string) (string, error) 
 	return tokenString, nil
 }
 
-func (s *Service) ValidateJWT(tokenString string) (pgtype.UUID, error) {
+func (s *Service) ValidateJWT(tokenString string) (pgtype.UUID, string, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -225,20 +225,23 @@ func (s *Service) ValidateJWT(tokenString string) (pgtype.UUID, error) {
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 
 	if err != nil {
-		return pgtype.UUID{}, fmt.Errorf("token tidak valid: %w", err)
+		return pgtype.UUID{}, "", fmt.Errorf("token tidak valid: %w", err)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return pgtype.UUID{}, errors.New("token claims tidak valid")
+		return pgtype.UUID{}, "", errors.New("token claims tidak valid")
 	}
 
 	userIDStr, ok := claims["user_id"].(string)
 	if !ok {
-		return pgtype.UUID{}, errors.New("user_id tidak ditemukan di token")
+		return pgtype.UUID{}, "", errors.New("user_id tidak ditemukan di token")
 	}
 
-	return stringToUUID(userIDStr)
+	email, _ := claims["email"].(string)
+
+	uuid, err := stringToUUID(userIDStr)
+	return uuid, email, err
 }
 
 func uuidToString(u pgtype.UUID) string {
