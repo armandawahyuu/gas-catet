@@ -213,3 +213,56 @@ func formatRupiahOCR(amount int64) string {
 	}
 	return result.String()
 }
+
+// GenerateRoast calls Gemini to roast user's spending habits.
+func (o *OCRService) GenerateRoast(prompt string) (string, error) {
+	payload := map[string]interface{}{
+		"model": o.model,
+		"messages": []map[string]interface{}{
+			{
+				"role":    "user",
+				"content": prompt,
+			},
+		},
+		"max_tokens": 500,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("marshal error: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", o.baseURL+"/chat/completions", bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("request error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+o.apiKey)
+
+	resp, err := o.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("API error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("decode error: %w", err)
+	}
+
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("no response from AI")
+	}
+
+	return strings.TrimSpace(result.Choices[0].Message.Content), nil
+}

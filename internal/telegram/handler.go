@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"gas-catet/internal/analytics"
 	"gas-catet/internal/category"
 	"gas-catet/internal/transaction"
 	"gas-catet/internal/user"
@@ -18,15 +19,16 @@ import (
 )
 
 type Handler struct {
-	bot       *BotClient
-	fsm       *FSM
-	catSvc    *category.Service
-	userSvc   *user.Service
-	txSvc     *transaction.Service
-	txQueries *transaction.Queries
-	walSvc    *wallet.Service
-	reporter  *Reporter
-	ocrSvc    *OCRService
+	bot          *BotClient
+	fsm          *FSM
+	catSvc       *category.Service
+	userSvc      *user.Service
+	txSvc        *transaction.Service
+	txQueries    *transaction.Queries
+	walSvc       *wallet.Service
+	analyticsSvc *analytics.Service
+	reporter     *Reporter
+	ocrSvc       *OCRService
 }
 
 func NewHandler(bot *BotClient, fsm *FSM, catSvc *category.Service, userSvc *user.Service, txSvc *transaction.Service, txQueries *transaction.Queries, walSvc *wallet.Service) *Handler {
@@ -47,6 +49,10 @@ func (h *Handler) SetReporter(r *Reporter) {
 
 func (h *Handler) SetOCR(o *OCRService) {
 	h.ocrSvc = o
+}
+
+func (h *Handler) SetAnalytics(a *analytics.Service) {
+	h.analyticsSvc = a
 }
 
 // Webhook handles incoming Telegram updates
@@ -143,6 +149,8 @@ func (h *Handler) handleCommand(chatID, telegramID int64, text string) {
 		h.handleQuickAdd(chatID, telegramID, strings.TrimPrefix(text, "/masuk "), TypeIncome)
 	case text == "/help":
 		h.sendHelp(chatID)
+	case text == "/roast":
+		h.handleRoast(chatID, telegramID)
 	case text == "/akun":
 		h.handleAkun(chatID, telegramID)
 	case text == "/diskonek":
@@ -699,6 +707,109 @@ func (h *Handler) handleDisconnectConfirm(chatID, telegramID int64) {
 	h.sendMessage(chatID, "✅ Koneksi berhasil diputus.\n\nAkun Telegram kamu sudah tidak terhubung ke GasCatet. Untuk menghubungkan ulang, ambil token baru di web GasCatet.")
 }
 
+// ============ ROAST AI ============
+
+func (h *Handler) handleRoast(chatID, telegramID int64) {
+	if h.ocrSvc == nil {
+		h.sendMessage(chatID, "⚠️ Fitur roast belum aktif (AI belum dikonfigurasi).")
+		return
+	}
+
+	if !h.isUserLinked(telegramID) {
+		h.sendMessage(chatID, "⚠️ Akun belum terhubung. Kirim /link <token> dulu ya bos.")
+		return
+	}
+
+	h.sendMessage(chatID, "🔥 Bentar ya, lagi ngintip dompet kamu...")
+
+	ctx := context.Background()
+	userRow, err := h.getUserByTelegramID(ctx, telegramID)
+	if err != nil {
+		h.sendMessage(chatID, "⚠️ Gagal ambil data user.")
+		return
+	}
+
+	roastText := h.generateRoast(ctx, userRow.ID, userRow.Name)
+	if roastText == "" {
+		return
+	}
+
+	msg := fmt.Sprintf("🔥🔥🔥 ROAST TIME 🔥🔥🔥\n\n%s", roastText)
+	h.sendMessage(chatID, msg)
+}
+
+// generateRoast builds financial data and calls AI to generate a roast.
+// Returns empty string if no data or AI fails.
+func (h *Handler) generateRoast(ctx context.Context, userID pgtype.UUID, userName string) string {
+	loc := time.FixedZone("WIB", 7*60*60)
+	now := time.Now().In(loc)
+
+	var dataLines []string
+
+	// Monthly summary
+	summary, err := h.txSvc.GetMonthlySummary(ctx, userID, now.Year(), now.Month())
+	if err == nil {
+		dataLines = append(dataLines, fmt.Sprintf("Bulan ini (%s %d):", indonesianMonth(now.Month()), now.Year()))
+		dataLines = append(dataLines, fmt.Sprintf("- Total pemasukan: Rp%d", summary.TotalIncome))
+		dataLines = append(dataLines, fmt.Sprintf("- Total pengeluaran: Rp%d", summary.TotalExpense))
+		dataLines = append(dataLines, fmt.Sprintf("- Sisa saldo: Rp%d", summary.Balance))
+	}
+
+	// Category breakdown & top expenses
+	if h.analyticsSvc != nil {
+		catBreakdown, err := h.analyticsSvc.GetCategoryBreakdown(ctx, userID, now.Year(), now.Month())
+		if err == nil && len(catBreakdown.Items) > 0 {
+			dataLines = append(dataLines, "\nPengeluaran per kategori:")
+			for _, item := range catBreakdown.Items {
+				if item.Type == "EXPENSE" {
+					dataLines = append(dataLines, fmt.Sprintf("- %s: Rp%d (%d transaksi)", item.Category, item.Total, item.Count))
+				}
+			}
+		}
+
+		topExpenses, err := h.analyticsSvc.GetTopExpenses(ctx, userID, now.Year(), now.Month(), 5)
+		if err == nil && len(topExpenses.Items) > 0 {
+			dataLines = append(dataLines, "\nTop 5 pengeluaran terbanyak:")
+			for i, item := range topExpenses.Items {
+				dataLines = append(dataLines, fmt.Sprintf("%d. %s — Rp%d (%dx)", i+1, item.Description, item.TotalAmount, item.Frequency))
+			}
+		}
+	}
+
+	if len(dataLines) == 0 {
+		return ""
+	}
+
+	financialData := strings.Join(dataLines, "\n")
+
+	prompt := fmt.Sprintf(`Kamu adalah "RoastBot" — AI yang SAVAGE, BRUTAL, dan LUCU dalam bahasa gaul Indonesia.
+
+Tugas: Roast kebiasaan keuangan user berdasarkan data di bawah. Buat user KENA MENTAL tapi tetap lucu dan menghibur.
+
+Aturan:
+- Pakai bahasa gaul Indonesia (lu, gue, anjir, buset, ngab, dah, dll)
+- SAVAGE tapi LUCU, jangan kasar atau menyinggung SARA
+- Sindir kebiasaan belanja yang boros atau pola yang aneh
+- Kasih 1 saran keuangan yang dibungkus humor di akhir
+- Pakai emoji secukupnya
+- Maksimal 800 karakter
+- JANGAN pakai format markdown (tidak ada * atau _)
+- Langsung roast, jangan basa-basi
+
+Nama user: %s
+
+Data keuangan:
+%s`, userName, financialData)
+
+	roastText, err := h.ocrSvc.GenerateRoast(prompt)
+	if err != nil {
+		log.Printf("Roast AI error: %v", err)
+		return ""
+	}
+
+	return roastText
+}
+
 // ============ RECEIPT SCANNING (OCR) ============
 
 func (h *Handler) handlePhoto(chatID, telegramID int64, photos []Photo) {
@@ -988,6 +1099,7 @@ func (h *Handler) sendHelp(chatID int64) {
 💰 *Lihat Keuangan*
 /saldo — Ringkasan saldo bulan ini
 /laporan — Laporan lengkap hari ini & bulan ini
+/roast — AI nge-roast kebiasaan belanja kamu 🔥
 
 ⚡ *Quick Add (1 pesan langsung jadi)*
 /catat <nominal> <deskripsi>

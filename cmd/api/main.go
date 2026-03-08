@@ -105,6 +105,7 @@ func main() {
 		bot := telegram.NewBotClient(telegramToken)
 		fsm := telegram.NewFSM()
 		tgHandler = telegram.NewHandler(bot, fsm, catService, userService, txService, txQueries, walService)
+		tgHandler.SetAnalytics(analyticsSvc)
 
 		// Auto report scheduler
 		reporter := telegram.NewReporter(bot, userService, txService)
@@ -118,6 +119,9 @@ func main() {
 			}
 			ocrSvc := telegram.NewOCRService(geminiAPIKey, geminiBaseURL, geminiModel)
 			tgHandler.SetOCR(ocrSvc)
+			reporter.SetOCR(ocrSvc)
+			reporter.SetAnalytics(analyticsSvc)
+			analyticsHandler.SetRoastGenerator(ocrSvc)
 			log.Println("Receipt OCR enabled (Gemini Vision)")
 		}
 
@@ -209,6 +213,7 @@ func main() {
 	analyticsGroup.Get("/trend", analyticsHandler.Trend)
 	analyticsGroup.Get("/top-expenses", analyticsHandler.TopExpenses)
 	analyticsGroup.Get("/categories", analyticsHandler.Categories)
+	analyticsGroup.Get("/roast", analyticsHandler.Roast)
 
 	adminGroup := api.Group("/admin", userHandler.AuthMiddleware, adminHandler.AdminOnly)
 	adminGroup.Get("/dashboard", adminHandler.Dashboard)

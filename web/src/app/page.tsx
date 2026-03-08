@@ -19,6 +19,7 @@ import {
   Shield,
   Clock,
   ChevronUp,
+  Flame,
 } from "lucide-react";
 
 /* ── Scroll reveal hook ─────────────────────────────── */
@@ -155,7 +156,7 @@ function StepCard({
 
 /* ── Marquee strip ───────────────────────────────────── */
 function Marquee() {
-  const items = ["EARLY ACCESS", "GRATIS", "CEPET", "AMAN", "TELEGRAM", "SAT-SET ⚡", "9+ FITUR", "ANTI RIBET"];
+  const items = ["EARLY ACCESS", "GRATIS", "CEPET", "AMAN", "TELEGRAM", "SAT-SET ⚡", "10+ FITUR", "ANTI RIBET"];
   const row = items.map((t, i) => (
     <span key={i} className="font-heading text-sm font-black uppercase tracking-widest whitespace-nowrap flex items-center gap-4">
       {t} <span style={{ color: "#FF3B30" }}>•</span>
@@ -192,6 +193,7 @@ export default function Home() {
     { icon: BarChart3, color: "#FF3B30", title: "Analitik", desc: "Grafik pengeluaran harian, mingguan, bulanan. Visual yang jelas." },
     { icon: Receipt, color: "#00C781", title: "Scan Struk AI", desc: "Foto struk → kirim ke bot → pilih dompet → otomatis kecatat. AI baca total, toko, tanggal & masuk ke dompet yang kamu pilih." },
     { icon: FileDown, color: "#FFCC00", title: "Export CSV", desc: "Download semua data transaksi ke spreadsheet kapan aja." },
+    { icon: Flame, color: "#FF6B00", title: "AI Roast 🔥", desc: "AI nge-roast kebiasaan belanja kamu pake bahasa gaul. Auto di laporan harian, dashboard, atau ketik /roast di Telegram." },
     { icon: Shield, color: "#FF3B30", title: "Aman & Privat", desc: "Data keuangan kamu cuma bisa diakses sama kamu. Titik." },
   ];
 
@@ -501,6 +503,7 @@ export default function Home() {
                   { cmd: "/saldo", desc: "Ringkasan saldo bulan ini" },
                   { cmd: "/laporan", desc: "Laporan lengkap hari ini & bulan ini" },
                   { cmd: "/akun", desc: "Cek info akun yang terhubung" },
+                  { cmd: "/roast", desc: "AI nge-roast kebiasaan belanja kamu 🔥" },
                   { cmd: "📸 Foto struk", desc: "Kirim foto struk → pilih dompet → otomatis kecatat!" },
                 ].map((item, i) => (
                   <div key={i} className="neo-card p-4 flex items-center gap-4 group">

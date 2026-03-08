@@ -264,6 +264,12 @@ export const analytics = {
     if (month) q.set("month", String(month));
     return request<CategoryBreakdownResponse>(`/api/analytics/categories?${q}`);
   },
+  roast: (year?: number, month?: number) => {
+    const q = new URLSearchParams();
+    if (year) q.set("year", String(year));
+    if (month) q.set("month", String(month));
+    return request<{ roast: string }>(`/api/analytics/roast?${q}`);
+  },
 };
 
 // Telegram
