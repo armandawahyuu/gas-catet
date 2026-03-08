@@ -17,7 +17,10 @@ type Template = {
   name: string;
   emoji: string;
   desc: string;
+  source: string;
   color: string;
+  savingsPct: number;
+  savingsTip: string;
   items: TemplateItem[];
 };
 
@@ -26,8 +29,11 @@ const BUDGET_TEMPLATES: Template[] = [
     id: "503020",
     name: "50/30/20",
     emoji: "⚖️",
-    desc: "Aturan klasik: 50% kebutuhan, 30% keinginan, 20% tabungan",
+    desc: "50% kebutuhan, 30% keinginan, 20% tabungan & investasi",
+    source: "Elizabeth Warren — All Your Worth",
     color: "#00C781",
+    savingsPct: 20,
+    savingsTip: "20% untuk tabungan darurat, investasi, atau bayar utang ekstra",
     items: [
       { category: "Makan", pct: 20 },
       { category: "Rumah", pct: 20 },
@@ -40,44 +46,72 @@ const BUDGET_TEMPLATES: Template[] = [
     ],
   },
   {
-    id: "hemat",
-    name: "Hemat",
+    id: "8020",
+    name: "80/20",
     emoji: "💪",
-    desc: "Lebih ketat: 60% kebutuhan pokok, 20% keinginan, 20% tabungan",
+    desc: "Simple: langsung potong 20% buat tabungan, 80% bebas dipakai",
+    source: "Pay Yourself First Method",
     color: "#FFCC00",
+    savingsPct: 20,
+    savingsTip: "20% langsung potong begitu gajian — taruh di rekening terpisah",
     items: [
       { category: "Makan", pct: 25 },
-      { category: "Rumah", pct: 25 },
+      { category: "Rumah", pct: 20 },
       { category: "Transport", pct: 10 },
       { category: "Belanja", pct: 10 },
       { category: "Hiburan", pct: 5 },
       { category: "Kesehatan", pct: 5 },
-      { category: "Pendidikan", pct: 5 },
-      { category: "Lainnya", pct: 15 },
+      { category: "Lainnya", pct: 5 },
     ],
   },
   {
-    id: "mahasiswa",
-    name: "Mahasiswa",
-    emoji: "🎓",
-    desc: "Budget terbatas — fokus makan, transport, dan pendidikan",
+    id: "40302010",
+    name: "40/30/20/10",
+    emoji: "🚀",
+    desc: "40% kebutuhan, 30% cicilan, 20% masa depan, 10% kebaikan",
+    source: "Financial Planning for Ambitious",
     color: "#FF3B30",
+    savingsPct: 30,
+    savingsTip: "20% untuk tabungan & investasi + 10% untuk zakat/donasi/orang tua",
     items: [
-      { category: "Makan", pct: 35 },
-      { category: "Transport", pct: 15 },
-      { category: "Pendidikan", pct: 15 },
-      { category: "Hiburan", pct: 10 },
+      { category: "Makan", pct: 15 },
+      { category: "Rumah", pct: 15 },
+      { category: "Transport", pct: 10 },
       { category: "Belanja", pct: 10 },
+      { category: "Hiburan", pct: 5 },
       { category: "Kesehatan", pct: 5 },
       { category: "Lainnya", pct: 10 },
+    ],
+  },
+  {
+    id: "6jars",
+    name: "6 Jars",
+    emoji: "🏺",
+    desc: "55% kebutuhan, 10% main, 10% edukasi — sisanya tabung & investasi",
+    source: "T. Harv Eker — Secrets of the Millionaire Mind",
+    color: "#8B5CF6",
+    savingsPct: 25,
+    savingsTip: "10% tabungan jangka panjang, 10% investasi (financial freedom), 5% sedekah",
+    items: [
+      { category: "Makan", pct: 20 },
+      { category: "Rumah", pct: 20 },
+      { category: "Transport", pct: 10 },
+      { category: "Belanja", pct: 5 },
+      { category: "Hiburan", pct: 10 },
+      { category: "Kesehatan", pct: 5 },
+      { category: "Pendidikan", pct: 10 },
+      { category: "Lainnya", pct: 5 },
     ],
   },
   {
     id: "darurat",
     name: "Dana Darurat",
     emoji: "🛡️",
-    desc: "Prioritas bangun dana darurat — pengeluaran ditekan cuma 70%, sisanya tabung",
+    desc: "Pengeluaran ditekan maks 70% — prioritas bangun dana darurat",
+    source: "Emergency Fund Priority",
     color: "#3B82F6",
+    savingsPct: 30,
+    savingsTip: "30% sisihkan untuk dana darurat — targetkan 3-6 bulan pengeluaran",
     items: [
       { category: "Makan", pct: 25 },
       { category: "Rumah", pct: 20 },
@@ -613,6 +647,7 @@ export default function BudgetsPage() {
                           <div>
                             <div className="font-heading font-bold text-sm">{tpl.name}</div>
                             <div className="text-xs mt-0.5" style={{ color: "#666" }}>{tpl.desc}</div>
+                            <div className="text-[10px] mt-0.5 italic" style={{ color: "#999" }}>{tpl.source}</div>
                           </div>
                         </div>
                         {selectedTemplate?.id === tpl.id && (
@@ -683,9 +718,14 @@ export default function BudgetsPage() {
                   </div>
 
                   {income - totalAmount > 0 && (
-                    <p className="text-xs" style={{ color: "#666" }}>
-                      💡 Sisa <strong>{formatRupiah(income - totalAmount)}</strong> ({100 - totalPct}%) bisa kamu tabung atau investasikan!
-                    </p>
+                    <div className="neo-border p-3 space-y-1" style={{ background: "#EFF6FF" }}>
+                      <p className="text-xs font-heading font-bold" style={{ color: "#3B82F6" }}>
+                        💰 Sisihkan {selectedTemplate.savingsPct}% = <strong>{formatRupiah(Math.round(income * selectedTemplate.savingsPct / 100))}</strong>
+                      </p>
+                      <p className="text-[11px]" style={{ color: "#666" }}>
+                        {selectedTemplate.savingsTip}
+                      </p>
+                    </div>
                   )}
 
                   {budgetList.length > 0 && (
