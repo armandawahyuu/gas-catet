@@ -134,9 +134,23 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID transaksi tidak valid"})
 	}
 
+	// Get old transaction to reverse wallet balance and preserve receipt
+	oldTx, err := h.service.GetByID(c.Context(), userID, txID)
+	if err != nil {
+		if err == ErrTransactionNotFound {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal ambil transaksi"})
+	}
+
 	var req UpdateRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "request body tidak valid"})
+	}
+
+	// Preserve receipt_url if not explicitly provided
+	if req.ReceiptURL == "" {
+		req.ReceiptURL = oldTx.ReceiptURL
 	}
 
 	resp, err := h.service.Update(c.Context(), userID, txID, req)
@@ -148,6 +162,32 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		default:
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal update transaksi"})
+		}
+	}
+
+	// Adjust wallet balances
+	if h.walUpdater != nil {
+		// Reverse old wallet balance
+		if oldTx.WalletID != "" {
+			oldWalUUID, _ := stringToUUID(oldTx.WalletID)
+			if oldWalUUID.Valid {
+				oldDelta := -oldTx.Amount
+				if oldTx.TransactionType == "EXPENSE" {
+					oldDelta = oldTx.Amount
+				}
+				_ = h.walUpdater.UpdateBalance(c.Context(), oldWalUUID, oldDelta)
+			}
+		}
+		// Apply new wallet balance
+		if req.WalletID != "" {
+			newWalUUID, _ := stringToUUID(req.WalletID)
+			if newWalUUID.Valid {
+				newDelta := req.Amount
+				if req.TransactionType == "EXPENSE" {
+					newDelta = -req.Amount
+				}
+				_ = h.walUpdater.UpdateBalance(c.Context(), newWalUUID, newDelta)
+			}
 		}
 	}
 

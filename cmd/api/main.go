@@ -79,6 +79,7 @@ func main() {
 
 	recQueries := recurring.New(pool)
 	recService := recurring.NewService(recQueries, txService)
+	recService.SetWalletUpdater(walService)
 	recHandler := recurring.NewHandler(recService)
 
 	goalQueries := goal.New(pool)

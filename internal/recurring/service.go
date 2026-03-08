@@ -21,9 +21,15 @@ type TransactionCreator interface {
 	CreateFromRecurring(ctx context.Context, userID pgtype.UUID, amount int64, txType, description, category string, walletID pgtype.UUID, txDate time.Time) error
 }
 
+// WalletBalanceUpdater updates wallet balance when recurring transactions are created.
+type WalletBalanceUpdater interface {
+	UpdateBalance(ctx context.Context, walletID pgtype.UUID, delta int64) error
+}
+
 type Service struct {
-	queries   *Queries
-	txCreator TransactionCreator
+	queries    *Queries
+	txCreator  TransactionCreator
+	walUpdater WalletBalanceUpdater
 }
 
 type RecurringResponse struct {
@@ -62,6 +68,10 @@ type UpdateRecurringRequest struct {
 
 func NewService(queries *Queries, txCreator TransactionCreator) *Service {
 	return &Service{queries: queries, txCreator: txCreator}
+}
+
+func (s *Service) SetWalletUpdater(w WalletBalanceUpdater) {
+	s.walUpdater = w
 }
 
 func (s *Service) Create(ctx context.Context, userID pgtype.UUID, req CreateRecurringRequest) (RecurringResponse, error) {
@@ -209,6 +219,15 @@ func (s *Service) ProcessDue(ctx context.Context) {
 		if err != nil {
 			log.Printf("[recurring] gagal buat transaksi untuk %s: %v", uuidToString(r.ID), err)
 			continue
+		}
+
+		// Update wallet balance
+		if s.walUpdater != nil && r.WalletID.Valid {
+			delta := r.Amount
+			if r.TransactionType == "EXPENSE" {
+				delta = -r.Amount
+			}
+			_ = s.walUpdater.UpdateBalance(ctx, r.WalletID, delta)
 		}
 
 		next := advanceDate(txDate, r.Frequency)
