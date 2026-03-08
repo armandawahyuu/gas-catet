@@ -61,6 +61,16 @@ func (h *Handler) Growth(c *fiber.Ctx) error {
 	return c.JSON(data)
 }
 
+func (h *Handler) Analytics(c *fiber.Ctx) error {
+	data, err := h.service.GetAnalytics(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "gagal ambil data analytics",
+		})
+	}
+	return c.JSON(data)
+}
+
 func (h *Handler) TrackPageView(c *fiber.Ctx) error {
 	var body struct {
 		Path     string `json:"path"`

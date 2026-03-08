@@ -273,3 +273,56 @@ func uuidToString(u pgtype.UUID) string {
 	b := u.Bytes
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
+
+// ============ ANALYTICS ============
+
+type DailyVolumeItem struct {
+	Date    string `json:"date"`
+	Income  int64  `json:"income"`
+	Expense int64  `json:"expense"`
+}
+
+type CategoryBreakdownItem struct {
+	Category        string `json:"category"`
+	TransactionType string `json:"transaction_type"`
+	TotalAmount     int64  `json:"total_amount"`
+	TxCount         int64  `json:"tx_count"`
+}
+
+type AnalyticsResponse struct {
+	DailyVolume []DailyVolumeItem       `json:"daily_volume"`
+	Categories  []CategoryBreakdownItem `json:"categories"`
+	UserGrowth  []UserGrowthItem        `json:"user_growth"`
+}
+
+func (s *Service) GetAnalytics(ctx context.Context) (AnalyticsResponse, error) {
+	dvRows, _ := s.queries.DailyVolume(ctx)
+	cbRows, _ := s.queries.CategoryBreakdown(ctx)
+	ugRows, _ := s.queries.UserGrowthDaily(ctx)
+
+	dv := make([]DailyVolumeItem, 0, len(dvRows))
+	for _, r := range dvRows {
+		dv = append(dv, DailyVolumeItem{Date: r.DateStr, Income: r.Income, Expense: r.Expense})
+	}
+
+	cb := make([]CategoryBreakdownItem, 0, len(cbRows))
+	for _, r := range cbRows {
+		cb = append(cb, CategoryBreakdownItem{
+			Category:        r.Category,
+			TransactionType: r.TransactionType,
+			TotalAmount:     r.TotalAmount,
+			TxCount:         r.TxCount,
+		})
+	}
+
+	ug := make([]UserGrowthItem, 0, len(ugRows))
+	for _, r := range ugRows {
+		ug = append(ug, UserGrowthItem{Date: r.DateStr, NewUsers: r.NewUsers})
+	}
+
+	return AnalyticsResponse{
+		DailyVolume: dv,
+		Categories:  cb,
+		UserGrowth:  ug,
+	}, nil
+}

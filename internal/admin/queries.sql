@@ -143,3 +143,26 @@ FROM transactions t
 JOIN users u ON u.id = t.user_id
 ORDER BY t.created_at DESC
 LIMIT 10;
+
+-- ============ ANALYTICS ============
+
+-- name: DailyVolume :many
+SELECT
+  TO_CHAR(transaction_date, 'YYYY-MM-DD') AS date_str,
+  COALESCE(SUM(CASE WHEN transaction_type = 'INCOME' THEN amount ELSE 0 END), 0)::BIGINT AS income,
+  COALESCE(SUM(CASE WHEN transaction_type = 'EXPENSE' THEN amount ELSE 0 END), 0)::BIGINT AS expense
+FROM transactions
+WHERE transaction_date >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY transaction_date
+ORDER BY transaction_date;
+
+-- name: CategoryBreakdown :many
+SELECT
+  category,
+  transaction_type,
+  COALESCE(SUM(amount), 0)::BIGINT AS total_amount,
+  COUNT(*)::BIGINT AS tx_count
+FROM transactions
+WHERE transaction_date >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY category, transaction_type
+ORDER BY total_amount DESC;

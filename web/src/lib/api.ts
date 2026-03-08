@@ -599,7 +599,28 @@ export const adminApi = {
   check: () => request<{ is_admin: boolean }>("/api/admin/check"),
   dashboard: () => request<AdminDashboard>("/api/admin/dashboard"),
   growth: () => request<AdminGrowth>("/api/admin/growth"),
+  analytics: () => request<AdminAnalytics>("/api/admin/analytics"),
 };
+
+// Admin Analytics types
+export interface AdminDailyVolume {
+  date: string;
+  income: number;
+  expense: number;
+}
+
+export interface AdminCategoryBreakdown {
+  category: string;
+  transaction_type: "INCOME" | "EXPENSE";
+  total_amount: number;
+  tx_count: number;
+}
+
+export interface AdminAnalytics {
+  daily_volume: AdminDailyVolume[];
+  categories: AdminCategoryBreakdown[];
+  user_growth: AdminUserGrowth[];
+}
 
 // Page view tracking (public, no auth)
 export const trackPageView = (path: string, referrer?: string) => {

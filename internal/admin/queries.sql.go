@@ -23,6 +23,50 @@ func (q *Queries) AvgTxPerUser(ctx context.Context) (float64, error) {
 	return avg_tx, err
 }
 
+const categoryBreakdown = `-- name: CategoryBreakdown :many
+SELECT
+  category,
+  transaction_type,
+  COALESCE(SUM(amount), 0)::BIGINT AS total_amount,
+  COUNT(*)::BIGINT AS tx_count
+FROM transactions
+WHERE transaction_date >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY category, transaction_type
+ORDER BY total_amount DESC
+`
+
+type CategoryBreakdownRow struct {
+	Category        string `json:"category"`
+	TransactionType string `json:"transaction_type"`
+	TotalAmount     int64  `json:"total_amount"`
+	TxCount         int64  `json:"tx_count"`
+}
+
+func (q *Queries) CategoryBreakdown(ctx context.Context) ([]CategoryBreakdownRow, error) {
+	rows, err := q.db.Query(ctx, categoryBreakdown)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CategoryBreakdownRow
+	for rows.Next() {
+		var i CategoryBreakdownRow
+		if err := rows.Scan(
+			&i.Category,
+			&i.TransactionType,
+			&i.TotalAmount,
+			&i.TxCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countActiveUsers30d = `-- name: CountActiveUsers30d :one
 SELECT COUNT(DISTINCT user_id)::BIGINT AS total
 FROM transactions
@@ -216,6 +260,45 @@ func (q *Queries) DailyTransactionCount(ctx context.Context) ([]DailyTransaction
 	for rows.Next() {
 		var i DailyTransactionCountRow
 		if err := rows.Scan(&i.DateStr, &i.TxCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const dailyVolume = `-- name: DailyVolume :many
+
+SELECT
+  TO_CHAR(transaction_date, 'YYYY-MM-DD') AS date_str,
+  COALESCE(SUM(CASE WHEN transaction_type = 'INCOME' THEN amount ELSE 0 END), 0)::BIGINT AS income,
+  COALESCE(SUM(CASE WHEN transaction_type = 'EXPENSE' THEN amount ELSE 0 END), 0)::BIGINT AS expense
+FROM transactions
+WHERE transaction_date >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY transaction_date
+ORDER BY transaction_date
+`
+
+type DailyVolumeRow struct {
+	DateStr string `json:"date_str"`
+	Income  int64  `json:"income"`
+	Expense int64  `json:"expense"`
+}
+
+// ============ ANALYTICS ============
+func (q *Queries) DailyVolume(ctx context.Context) ([]DailyVolumeRow, error) {
+	rows, err := q.db.Query(ctx, dailyVolume)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DailyVolumeRow
+	for rows.Next() {
+		var i DailyVolumeRow
+		if err := rows.Scan(&i.DateStr, &i.Income, &i.Expense); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
