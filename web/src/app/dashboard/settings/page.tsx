@@ -170,6 +170,7 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
+          {/* TODO: enable after early access ends
           {profile?.plan !== "pro" && (
             <a
               href="https://dna-indonesia.myr.id/m/gascatet-pro"
@@ -181,6 +182,7 @@ export default function SettingsPage() {
               Upgrade Pro ☕
             </a>
           )}
+          */}
         </div>
       </section>
 
