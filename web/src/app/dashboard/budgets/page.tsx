@@ -72,6 +72,21 @@ const BUDGET_TEMPLATES: Template[] = [
       { category: "Lainnya", pct: 10 },
     ],
   },
+  {
+    id: "darurat",
+    name: "Dana Darurat",
+    emoji: "🛡️",
+    desc: "Prioritas bangun dana darurat — pengeluaran ditekan cuma 70%, sisanya tabung",
+    color: "#3B82F6",
+    items: [
+      { category: "Makan", pct: 25 },
+      { category: "Rumah", pct: 20 },
+      { category: "Transport", pct: 10 },
+      { category: "Kesehatan", pct: 5 },
+      { category: "Belanja", pct: 5 },
+      { category: "Lainnya", pct: 5 },
+    ],
+  },
 ];
 
 export default function BudgetsPage() {
