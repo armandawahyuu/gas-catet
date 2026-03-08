@@ -21,6 +21,11 @@ type StatsResponse struct {
 	TotalTx       int64  `json:"total_transactions"`
 	ActiveUsers7d int64  `json:"active_users_7d"`
 	TotalVolume   int64  `json:"total_volume"`
+	TotalIncome   int64  `json:"total_income"`
+	TotalExpense  int64  `json:"total_expense"`
+	TelegramUsers int64  `json:"telegram_users"`
+	NewUsersToday int64  `json:"new_users_today"`
+	TxToday       int64  `json:"tx_today"`
 	DatabaseSize  string `json:"database_size"`
 }
 
@@ -45,9 +50,16 @@ type RecentTxItem struct {
 }
 
 type DashboardResponse struct {
-	Stats    StatsResponse  `json:"stats"`
-	Users    []UserItem     `json:"users"`
-	RecentTx []RecentTxItem `json:"recent_transactions"`
+	Stats         StatsResponse     `json:"stats"`
+	Users         []UserItem        `json:"users"`
+	RecentTx      []RecentTxItem    `json:"recent_transactions"`
+	TopCategories []TopCategoryItem `json:"top_categories"`
+}
+
+type TopCategoryItem struct {
+	Category    string `json:"category"`
+	TxCount     int64  `json:"tx_count"`
+	TotalAmount int64  `json:"total_amount"`
 }
 
 func (s *Service) GetDashboard(ctx context.Context) (DashboardResponse, error) {
@@ -71,9 +83,39 @@ func (s *Service) GetDashboard(ctx context.Context) (DashboardResponse, error) {
 		return DashboardResponse{}, fmt.Errorf("total volume: %w", err)
 	}
 
+	totalIncome, err := s.queries.TotalIncome(ctx)
+	if err != nil {
+		return DashboardResponse{}, fmt.Errorf("total income: %w", err)
+	}
+
+	totalExpense, err := s.queries.TotalExpense(ctx)
+	if err != nil {
+		return DashboardResponse{}, fmt.Errorf("total expense: %w", err)
+	}
+
+	telegramUsers, err := s.queries.CountTelegramUsers(ctx)
+	if err != nil {
+		return DashboardResponse{}, fmt.Errorf("telegram users: %w", err)
+	}
+
+	newUsersToday, err := s.queries.NewUsersToday(ctx)
+	if err != nil {
+		return DashboardResponse{}, fmt.Errorf("new users today: %w", err)
+	}
+
+	txToday, err := s.queries.TransactionsToday(ctx)
+	if err != nil {
+		return DashboardResponse{}, fmt.Errorf("tx today: %w", err)
+	}
+
 	dbSize, err := s.queries.GetDatabaseSize(ctx)
 	if err != nil {
 		return DashboardResponse{}, fmt.Errorf("db size: %w", err)
+	}
+
+	topCatsRows, err := s.queries.TopCategories(ctx)
+	if err != nil {
+		return DashboardResponse{}, fmt.Errorf("top categories: %w", err)
 	}
 
 	usersRows, err := s.queries.ListAllUsers(ctx)
@@ -116,16 +158,31 @@ func (s *Service) GetDashboard(ctx context.Context) (DashboardResponse, error) {
 		})
 	}
 
+	topCats := make([]TopCategoryItem, 0, len(topCatsRows))
+	for _, c := range topCatsRows {
+		topCats = append(topCats, TopCategoryItem{
+			Category:    c.Category,
+			TxCount:     c.TxCount,
+			TotalAmount: c.TotalAmount,
+		})
+	}
+
 	return DashboardResponse{
 		Stats: StatsResponse{
 			TotalUsers:    totalUsers,
 			TotalTx:       totalTx,
 			ActiveUsers7d: activeUsers,
 			TotalVolume:   totalVol,
+			TotalIncome:   totalIncome,
+			TotalExpense:  totalExpense,
+			TelegramUsers: telegramUsers,
+			NewUsersToday: newUsersToday,
+			TxToday:       txToday,
 			DatabaseSize:  dbSize,
 		},
-		Users:    users,
-		RecentTx: txItems,
+		Users:         users,
+		RecentTx:      txItems,
+		TopCategories: topCats,
 	}, nil
 }
 

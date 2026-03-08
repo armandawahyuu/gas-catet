@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, adminApi } from "@/lib/api";
-import { Shield, Eye, EyeOff } from "lucide-react";
+import { Shield, Eye, EyeOff, Zap } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -42,30 +42,33 @@ export default function AdminLoginPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: "#0A0A0A" }}
+      style={{ background: "#FAFAFA" }}
     >
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div
-            className="w-16 h-16 flex items-center justify-center neo-border mb-4"
+            className="w-16 h-16 flex items-center justify-center neo-border neo-shadow mb-4"
             style={{ background: "#FF3B30" }}
           >
             <Shield size={32} strokeWidth={2.5} className="text-white" />
           </div>
-          <h1 className="font-heading text-2xl font-bold text-white">
-            Admin Panel
-          </h1>
-          <p className="text-sm mt-1" style={{ color: "#666" }}>
-            GasCatet Owner Access
+          <div className="flex items-center gap-2 mb-1">
+            <Zap size={20} strokeWidth={3} style={{ color: "#FFCC00" }} />
+            <h1 className="font-heading text-2xl font-bold">
+              GasCatet Admin
+            </h1>
+          </div>
+          <p className="text-sm" style={{ color: "#666" }}>
+            Owner Access Only
           </p>
         </div>
 
         {/* Login Form */}
         <form onSubmit={handleLogin}>
           <div
-            className="neo-border p-6 space-y-4"
-            style={{ background: "#1A1A1A" }}
+            className="neo-border neo-shadow p-6 space-y-4"
+            style={{ background: "#FFFFFF" }}
           >
             {error && (
               <div
@@ -77,28 +80,22 @@ export default function AdminLoginPage() {
             )}
 
             <div>
-              <label
-                className="block text-xs font-heading font-bold uppercase tracking-wider mb-2"
-                style={{ color: "#888" }}
-              >
+              <label className="block text-xs font-heading font-bold uppercase tracking-wider mb-2">
                 Email
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 neo-border font-heading text-sm font-bold"
-                style={{ background: "#0F0F0F", color: "#FFF" }}
+                className="w-full px-4 py-3 neo-border font-heading text-sm font-bold focus:outline-none"
+                style={{ background: "#FAFAFA" }}
                 placeholder="admin@gascatet.id"
                 required
               />
             </div>
 
             <div>
-              <label
-                className="block text-xs font-heading font-bold uppercase tracking-wider mb-2"
-                style={{ color: "#888" }}
-              >
+              <label className="block text-xs font-heading font-bold uppercase tracking-wider mb-2">
                 Password
               </label>
               <div className="relative">
@@ -106,8 +103,8 @@ export default function AdminLoginPage() {
                   type={showPw ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 neo-border font-heading text-sm font-bold pr-12"
-                  style={{ background: "#0F0F0F", color: "#FFF" }}
+                  className="w-full px-4 py-3 neo-border font-heading text-sm font-bold pr-12 focus:outline-none"
+                  style={{ background: "#FAFAFA" }}
                   placeholder="••••••••"
                   required
                 />
@@ -125,7 +122,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 neo-border font-heading text-sm font-bold uppercase tracking-wider transition-all hover:opacity-90 disabled:opacity-50"
+              className="w-full py-3 neo-border neo-shadow font-heading text-sm font-bold uppercase tracking-wider transition-all hover:translate-y-0.5 hover:shadow-none disabled:opacity-50 disabled:hover:translate-y-0"
               style={{ background: "#FF3B30", color: "#FFF" }}
             >
               {loading ? "Authenticating..." : "Login as Admin"}
@@ -134,8 +131,8 @@ export default function AdminLoginPage() {
         </form>
 
         <p
-          className="text-center text-xs mt-6"
-          style={{ color: "#444" }}
+          className="text-center text-xs mt-6 font-heading"
+          style={{ color: "#999" }}
         >
           Hanya pemilik aplikasi yang bisa mengakses halaman ini.
         </p>

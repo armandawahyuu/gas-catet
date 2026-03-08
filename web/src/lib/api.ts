@@ -501,6 +501,11 @@ export interface AdminStats {
   total_transactions: number;
   active_users_7d: number;
   total_volume: number;
+  total_income: number;
+  total_expense: number;
+  telegram_users: number;
+  new_users_today: number;
+  tx_today: number;
   database_size: string;
 }
 
@@ -524,10 +529,17 @@ export interface AdminRecentTx {
   user_email: string;
 }
 
+export interface AdminTopCategory {
+  category: string;
+  tx_count: number;
+  total_amount: number;
+}
+
 export interface AdminDashboard {
   stats: AdminStats;
   users: AdminUser[];
   recent_transactions: AdminRecentTx[];
+  top_categories: AdminTopCategory[];
 }
 
 export const adminApi = {

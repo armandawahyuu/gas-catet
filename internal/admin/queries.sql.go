@@ -24,6 +24,17 @@ func (q *Queries) CountActiveUsers(ctx context.Context) (int64, error) {
 	return total, err
 }
 
+const countTelegramUsers = `-- name: CountTelegramUsers :one
+SELECT COUNT(*)::BIGINT AS total FROM users WHERE telegram_id IS NOT NULL AND telegram_id != ''
+`
+
+func (q *Queries) CountTelegramUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countTelegramUsers)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
 const countTransactions = `-- name: CountTransactions :one
 SELECT COUNT(*)::BIGINT AS total FROM transactions
 `
@@ -102,6 +113,17 @@ func (q *Queries) ListAllUsers(ctx context.Context) ([]ListAllUsersRow, error) {
 	return items, nil
 }
 
+const newUsersToday = `-- name: NewUsersToday :one
+SELECT COUNT(*)::BIGINT AS total FROM users WHERE created_at::date = CURRENT_DATE
+`
+
+func (q *Queries) NewUsersToday(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, newUsersToday)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
 const recentTransactions = `-- name: RecentTransactions :many
 SELECT t.id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.created_at,
        u.name AS user_name, u.email AS user_email
@@ -153,12 +175,79 @@ func (q *Queries) RecentTransactions(ctx context.Context) ([]RecentTransactionsR
 	return items, nil
 }
 
+const topCategories = `-- name: TopCategories :many
+SELECT category, COUNT(*)::BIGINT AS tx_count, COALESCE(SUM(amount), 0)::BIGINT AS total_amount
+FROM transactions
+GROUP BY category
+ORDER BY tx_count DESC
+LIMIT 5
+`
+
+type TopCategoriesRow struct {
+	Category    string `json:"category"`
+	TxCount     int64  `json:"tx_count"`
+	TotalAmount int64  `json:"total_amount"`
+}
+
+func (q *Queries) TopCategories(ctx context.Context) ([]TopCategoriesRow, error) {
+	rows, err := q.db.Query(ctx, topCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TopCategoriesRow
+	for rows.Next() {
+		var i TopCategoriesRow
+		if err := rows.Scan(&i.Category, &i.TxCount, &i.TotalAmount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const totalExpense = `-- name: TotalExpense :one
+SELECT COALESCE(SUM(amount), 0)::BIGINT AS total FROM transactions WHERE transaction_type = 'EXPENSE'
+`
+
+func (q *Queries) TotalExpense(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, totalExpense)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
+const totalIncome = `-- name: TotalIncome :one
+SELECT COALESCE(SUM(amount), 0)::BIGINT AS total FROM transactions WHERE transaction_type = 'INCOME'
+`
+
+func (q *Queries) TotalIncome(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, totalIncome)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
 const totalVolume = `-- name: TotalVolume :one
 SELECT COALESCE(SUM(amount), 0)::BIGINT AS total FROM transactions
 `
 
 func (q *Queries) TotalVolume(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, totalVolume)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
+const transactionsToday = `-- name: TransactionsToday :one
+SELECT COUNT(*)::BIGINT AS total FROM transactions WHERE transaction_date = CURRENT_DATE
+`
+
+func (q *Queries) TransactionsToday(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, transactionsToday)
 	var total int64
 	err := row.Scan(&total)
 	return total, err

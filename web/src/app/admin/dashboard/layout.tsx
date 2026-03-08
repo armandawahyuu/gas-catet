@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/api";
-import { Shield, LogOut } from "lucide-react";
+import { Shield, LogOut, Zap } from "lucide-react";
 
 export default function AdminDashboardLayout({
   children,
@@ -48,9 +48,9 @@ export default function AdminDashboardLayout({
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ background: "#0A0A0A" }}
+        style={{ background: "#FAFAFA" }}
       >
-        <div className="font-heading text-xl font-bold animate-pulse text-white">
+        <div className="font-heading text-xl font-bold animate-pulse">
           Loading...
         </div>
       </div>
@@ -60,13 +60,16 @@ export default function AdminDashboardLayout({
   if (!authorized) return null;
 
   return (
-    <div className="min-h-screen" style={{ background: "#0A0A0A" }}>
+    <div className="min-h-screen" style={{ background: "#FAFAFA" }}>
       {/* Top Bar */}
       <header
-        className="flex items-center justify-between px-6 py-4"
+        className="flex items-center justify-between px-6 py-4 neo-border"
         style={{
-          background: "#141414",
-          borderBottom: "3px solid #FF3B30",
+          background: "#FFFFFF",
+          borderTop: "none",
+          borderLeft: "none",
+          borderRight: "none",
+          borderBottom: "3px solid #121212",
         }}
       >
         <div className="flex items-center gap-4">
@@ -77,9 +80,12 @@ export default function AdminDashboardLayout({
             <Shield size={20} strokeWidth={3} className="text-white" />
           </div>
           <div>
-            <h1 className="font-heading text-lg font-bold text-white tracking-tight">
-              GasCatet Admin
-            </h1>
+            <div className="flex items-center gap-2">
+              <Zap size={16} strokeWidth={3} style={{ color: "#FFCC00" }} />
+              <h1 className="font-heading text-lg font-bold tracking-tight">
+                GasCatet Admin
+              </h1>
+            </div>
             <p className="text-xs" style={{ color: "#666" }}>
               {email}
             </p>
@@ -87,7 +93,7 @@ export default function AdminDashboardLayout({
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 neo-border font-heading text-xs font-bold uppercase tracking-wider transition-all hover:opacity-80"
+          className="flex items-center gap-2 px-4 py-2 neo-border neo-shadow font-heading text-xs font-bold uppercase tracking-wider transition-all hover:translate-y-0.5 hover:shadow-none"
           style={{ background: "#FF3B30", color: "#FFF" }}
         >
           <LogOut size={14} strokeWidth={3} />
