@@ -105,6 +105,10 @@ func (h *Handler) handleCommand(chatID, telegramID int64, text string) {
 		h.handleLinkToken(chatID, telegramID, token)
 	case text == "/saldo":
 		h.handleSaldo(chatID, telegramID)
+	case strings.HasPrefix(text, "/catat "):
+		h.handleQuickAdd(chatID, telegramID, strings.TrimPrefix(text, "/catat "), TypeExpense)
+	case strings.HasPrefix(text, "/masuk "):
+		h.handleQuickAdd(chatID, telegramID, strings.TrimPrefix(text, "/masuk "), TypeIncome)
 	case text == "/help":
 		h.sendHelp(chatID)
 	default:
@@ -601,10 +605,16 @@ func (h *Handler) sendHelp(chatID int64) {
 Perintah:
 /start - Menu utama
 /saldo - Cek saldo bulan ini
+/catat <nominal> <deskripsi> - Quick add pengeluaran
+/masuk <nominal> <deskripsi> - Quick add pemasukan
 /link <token> - Hubungkan akun Telegram
 /help - Bantuan
 
-Cara pakai:
+Quick Add:
+/catat 40000 kopi starbucks
+/masuk 5000000 gaji bulanan
+
+Cara pakai (menu):
 1. Tap /start
 2. Pilih Pengeluaran/Pemasukan
 3. Ketik nama barang
@@ -617,6 +627,84 @@ Done! ✅`
 		Text:      msg,
 		ParseMode: "Markdown",
 	})
+}
+
+// handleQuickAdd processes quick add commands: /catat 40000 kopi starbucks
+func (h *Handler) handleQuickAdd(chatID, telegramID int64, input string, txType string) {
+	if !h.isUserLinked(telegramID) {
+		h.sendMessage(chatID, "⚠️ Akun Telegram kamu belum terhubung.\n\n1. Login di web GasCatet\n2. Ambil token di menu Link Telegram\n3. Kirim: /link <token>")
+		return
+	}
+
+	parts := strings.SplitN(input, " ", 2)
+	if len(parts) < 2 {
+		if txType == TypeIncome {
+			h.sendMessage(chatID, "⚠️ Format: /masuk <nominal> <deskripsi>\n\nContoh: /masuk 5000000 gaji bulanan")
+		} else {
+			h.sendMessage(chatID, "⚠️ Format: /catat <nominal> <deskripsi>\n\nContoh: /catat 40000 kopi starbucks")
+		}
+		return
+	}
+
+	// Parse amount
+	amountStr := parts[0]
+	amountStr = strings.ReplaceAll(amountStr, ".", "")
+	amountStr = strings.ReplaceAll(amountStr, ",", "")
+	amountStr = strings.ToLower(amountStr)
+	amountStr = strings.TrimPrefix(amountStr, "rp")
+
+	amount, err := strconv.ParseInt(amountStr, 10, 64)
+	if err != nil || amount <= 0 {
+		h.sendMessage(chatID, "⚠️ Nominal nggak valid bos. Contoh: /catat 40000 kopi")
+		return
+	}
+
+	description := strings.TrimSpace(parts[1])
+	if description == "" {
+		h.sendMessage(chatID, "⚠️ Deskripsi nggak boleh kosong bos.")
+		return
+	}
+
+	ctx := context.Background()
+	userRow, err := h.getUserByTelegramID(ctx, telegramID)
+	if err != nil {
+		h.sendMessage(chatID, "⚠️ Gagal ambil data user. Coba lagi ya bos.")
+		return
+	}
+
+	loc := time.FixedZone("WIB", 7*60*60)
+	now := time.Now().In(loc)
+	txDate := now.Format("2006-01-02")
+
+	_, err = h.txSvc.Create(ctx, userRow.ID, transaction.CreateRequest{
+		Amount:          amount,
+		TransactionType: txType,
+		Description:     description,
+		Category:        "Lainnya",
+		TransactionDate: txDate,
+	})
+
+	if err != nil {
+		log.Printf("Error quick-add transaction: %v", err)
+		h.sendMessage(chatID, "⚠️ Gagal nyimpen transaksi. Coba lagi ya bos.")
+		return
+	}
+
+	typeEmoji := "💸"
+	typeLabel := "Pengeluaran"
+	if txType == TypeIncome {
+		typeEmoji = "💰"
+		typeLabel = "Pemasukan"
+	}
+
+	msg := fmt.Sprintf("⚡ Quick add berhasil!\n\n%s %s\n📝 %s\n💵 %s\n📅 %s",
+		typeEmoji, typeLabel,
+		description,
+		formatRupiah(amount),
+		txDate,
+	)
+
+	h.sendMessage(chatID, msg)
 }
 
 // Helpers
