@@ -213,6 +213,12 @@ export default function TelegramPage() {
                   <CommandRow cmd="/diskonek" desc="Putuskan koneksi Telegram" />
                 </div>
               </div>
+              <div>
+                <p className="text-xs font-heading font-bold uppercase tracking-wider mb-2" style={{ color: "#999" }}>📸 Scan Struk AI</p>
+                <div className="space-y-2 text-sm">
+                  <CommandRow cmd="Kirim foto struk" desc="AI baca struk → otomatis jadi transaksi" />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -247,6 +253,7 @@ export default function TelegramPage() {
               <li>• Tanggal bisa DD/MM/YYYY atau DD-MM-YYYY</li>
               <li>• Quick add (<strong>/catat</strong>) otomatis masuk kategori &quot;Lainnya&quot;</li>
               <li>• Laporan otomatis dikirim setiap jam <strong>20:00 WIB</strong></li>
+              <li>• 📸 Kirim foto struk → AI baca dan otomatis catat</li>
               <li>• Ketik <strong>/batal</strong> kapan saja untuk batalkan input</li>
             </ul>
           </div>

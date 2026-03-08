@@ -7,10 +7,20 @@ type Update struct {
 }
 
 type Message struct {
-	MessageID int64  `json:"message_id"`
-	From      *User  `json:"from,omitempty"`
-	Chat      Chat   `json:"chat"`
-	Text      string `json:"text"`
+	MessageID int64   `json:"message_id"`
+	From      *User   `json:"from,omitempty"`
+	Chat      Chat    `json:"chat"`
+	Text      string  `json:"text"`
+	Photo     []Photo `json:"photo,omitempty"`
+	Caption   string  `json:"caption,omitempty"`
+}
+
+type Photo struct {
+	FileID       string `json:"file_id"`
+	FileUniqueID string `json:"file_unique_id"`
+	Width        int    `json:"width"`
+	Height       int    `json:"height"`
+	FileSize     int64  `json:"file_size"`
 }
 
 type CallbackQuery struct {

@@ -38,6 +38,9 @@ func main() {
 	}
 
 	telegramToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+	geminiBaseURL := os.Getenv("GEMINI_BASE_URL")
+	geminiModel := os.Getenv("GEMINI_MODEL")
 
 	port := os.Getenv("APP_PORT")
 	if port == "" {
@@ -106,6 +109,16 @@ func main() {
 		reporter := telegram.NewReporter(bot, userService, txService)
 		reporter.StartDailyReport()
 		tgHandler.SetReporter(reporter)
+
+		// Receipt OCR (optional — only if Gemini key is set)
+		if geminiAPIKey != "" && geminiBaseURL != "" {
+			if geminiModel == "" {
+				geminiModel = "gemini/gemini-2.0-flash-lite"
+			}
+			ocrSvc := telegram.NewOCRService(geminiAPIKey, geminiBaseURL, geminiModel)
+			tgHandler.SetOCR(ocrSvc)
+			log.Println("Receipt OCR enabled (Gemini Vision)")
+		}
 
 		log.Println("Telegram Bot enabled (with daily report scheduler)")
 	} else {

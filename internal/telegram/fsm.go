@@ -15,6 +15,7 @@ const (
 	StateWaitingCustomDate = 5
 	StateWaitingWallet     = 6
 	StateWaitingConfirm    = 7
+	StateReceiptConfirm    = 8
 )
 
 // Transaction type constants
@@ -32,6 +33,7 @@ type UserSession struct {
 	WalletID        string
 	WalletName      string
 	TxDate          string
+	ReceiptFileID   string // Telegram photo file_id for receipt
 	UpdatedAt       time.Time
 }
 

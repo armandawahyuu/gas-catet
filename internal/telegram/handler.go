@@ -26,6 +26,7 @@ type Handler struct {
 	txQueries *transaction.Queries
 	walSvc    *wallet.Service
 	reporter  *Reporter
+	ocrSvc    *OCRService
 }
 
 func NewHandler(bot *BotClient, fsm *FSM, catSvc *category.Service, userSvc *user.Service, txSvc *transaction.Service, txQueries *transaction.Queries, walSvc *wallet.Service) *Handler {
@@ -42,6 +43,10 @@ func NewHandler(bot *BotClient, fsm *FSM, catSvc *category.Service, userSvc *use
 
 func (h *Handler) SetReporter(r *Reporter) {
 	h.reporter = r
+}
+
+func (h *Handler) SetOCR(o *OCRService) {
+	h.ocrSvc = o
 }
 
 // Webhook handles incoming Telegram updates
@@ -74,6 +79,12 @@ func (h *Handler) handleMessage(msg *Message) {
 	telegramID := msg.From.ID
 	text := strings.TrimSpace(msg.Text)
 
+	// Handle photo messages (receipt scanning)
+	if len(msg.Photo) > 0 {
+		h.handlePhoto(chatID, telegramID, msg.Photo)
+		return
+	}
+
 	// Handle commands
 	if strings.HasPrefix(text, "/") {
 		h.handleCommand(chatID, telegramID, text)
@@ -98,6 +109,8 @@ func (h *Handler) handleMessage(msg *Message) {
 		h.handleCustomDateInput(chatID, telegramID, text)
 	case StateWaitingConfirm:
 		h.sendMessage(chatID, "⚠️ Pakai tombol di atas ya bos — ✅ Simpan atau ✏️ Edit.")
+	case StateReceiptConfirm:
+		h.sendMessage(chatID, "⚠️ Pakai tombol di atas ya bos — ✅ Simpan, ✏️ Edit, atau ❌ Batal.")
 	default:
 		h.sendMainMenu(chatID)
 	}
@@ -182,6 +195,11 @@ func (h *Handler) handleCallback(cb *CallbackQuery) {
 		h.fsm.ResetSession(chatID)
 		h.sendMessage(chatID, "❌ Dibatalin ya bos. Mau nyatet lagi?")
 		h.sendMainMenu(chatID)
+	case data == "receipt_save":
+		h.handleReceiptSave(chatID, cb.From.ID)
+	case data == "receipt_edit":
+		h.fsm.ResetSession(chatID)
+		h.sendMessage(chatID, "✏️ Oke, coba kirim ulang foto struk-nya ya bos!")
 	}
 }
 
@@ -677,6 +695,126 @@ func (h *Handler) handleDisconnectConfirm(chatID, telegramID int64) {
 	h.sendMessage(chatID, "✅ Koneksi berhasil diputus.\n\nAkun Telegram kamu sudah tidak terhubung ke GasCatet. Untuk menghubungkan ulang, ambil token baru di web GasCatet.")
 }
 
+// ============ RECEIPT SCANNING (OCR) ============
+
+func (h *Handler) handlePhoto(chatID, telegramID int64, photos []Photo) {
+	if h.ocrSvc == nil {
+		h.sendMessage(chatID, "⚠️ Fitur scan struk belum diaktifkan.")
+		return
+	}
+
+	if !h.isUserLinked(telegramID) {
+		h.sendMessage(chatID, "⚠️ Akun belum terhubung. Kirim /link <token> dulu ya bos.")
+		return
+	}
+
+	// Get the largest photo (last in array = highest resolution)
+	photo := photos[len(photos)-1]
+
+	h.sendMessage(chatID, "🔍 Lagi baca struk-nya... tunggu bentar ya bos!")
+
+	// Download photo from Telegram
+	fileURL, err := h.bot.GetFileURL(photo.FileID)
+	if err != nil {
+		log.Printf("Error getting file URL: %v", err)
+		h.sendMessage(chatID, "⚠️ Gagal ambil foto. Coba kirim ulang ya bos.")
+		return
+	}
+
+	imageData, err := h.bot.DownloadFile(fileURL)
+	if err != nil {
+		log.Printf("Error downloading file: %v", err)
+		h.sendMessage(chatID, "⚠️ Gagal download foto. Coba kirim ulang ya bos.")
+		return
+	}
+
+	// Send to Gemini for OCR
+	data, err := h.ocrSvc.ExtractReceipt(imageData)
+	if err != nil {
+		log.Printf("OCR error: %v", err)
+		if strings.Contains(err.Error(), "bukan struk") {
+			h.sendMessage(chatID, "🤔 Kayaknya ini bukan foto struk bos. Coba kirim foto struk belanja/transaksi ya!")
+		} else {
+			h.sendMessage(chatID, "⚠️ Gagal baca struk-nya bos. Pastikan foto struk-nya jelas dan coba kirim ulang.")
+		}
+		return
+	}
+
+	// Save to FSM session for confirmation
+	h.fsm.SetSession(chatID, &UserSession{
+		State:           StateReceiptConfirm,
+		TransactionType: TypeExpense,
+		Category:        data.Category,
+		Description:     data.Description,
+		Amount:          data.Total,
+		TxDate:          data.Date,
+		ReceiptFileID:   photo.FileID,
+	})
+
+	// Show confirmation
+	msg := formatReceiptConfirmation(data)
+	_ = h.bot.SendMessage(SendMessageRequest{
+		ChatID:    chatID,
+		Text:      msg,
+		ParseMode: "Markdown",
+		ReplyMarkup: &ReplyMarkup{
+			InlineKeyboard: [][]InlineKeyboardButton{
+				{
+					{Text: "✅ Simpan", CallbackData: "receipt_save"},
+					{Text: "✏️ Kirim Ulang", CallbackData: "receipt_edit"},
+					{Text: "❌ Batal", CallbackData: "cancel"},
+				},
+			},
+		},
+	})
+}
+
+func (h *Handler) handleReceiptSave(chatID, telegramID int64) {
+	session := h.fsm.GetSession(chatID)
+	if session.State != StateReceiptConfirm {
+		h.sendMainMenu(chatID)
+		return
+	}
+
+	ctx := context.Background()
+	userRow, err := h.getUserByTelegramID(ctx, telegramID)
+	if err != nil {
+		h.sendMessage(chatID, "⚠️ Gagal ambil data user. Coba lagi nanti ya bos.")
+		h.fsm.ResetSession(chatID)
+		return
+	}
+
+	_, err = h.txSvc.Create(ctx, userRow.ID, transaction.CreateRequest{
+		Amount:          session.Amount,
+		TransactionType: session.TransactionType,
+		Description:     session.Description,
+		Category:        session.Category,
+		TransactionDate: session.TxDate,
+	})
+
+	if err != nil {
+		log.Printf("Error creating receipt transaction: %v", err)
+		h.sendMessage(chatID, "⚠️ Gagal nyimpen transaksi. Coba lagi ya bos.")
+		h.fsm.ResetSession(chatID)
+		return
+	}
+
+	msg := fmt.Sprintf("✅ Struk berhasil dicatat!\n\n"+
+		"💸 Pengeluaran\n"+
+		"📝 %s\n"+
+		"🏷️ %s\n"+
+		"💵 %s\n"+
+		"📅 %s",
+		session.Description,
+		session.Category,
+		formatRupiah(session.Amount),
+		session.TxDate,
+	)
+
+	h.sendMessage(chatID, msg)
+	h.fsm.ResetSession(chatID)
+}
+
 func (h *Handler) handleLinkToken(chatID, telegramID int64, token string) {
 	ctx := context.Background()
 	token = strings.TrimSpace(token)
@@ -748,6 +886,7 @@ func (h *Handler) sendHelp(chatID int64) {
 • Nominal bisa pakai titik: 25.000
 • Tanggal bisa DD/MM/YYYY atau DD-MM-YYYY
 • Quick add otomatis masuk kategori "Lainnya"
+• 📸 Kirim foto struk → otomatis kecatat!
 • Laporan otomatis dikirim jam 20:00 WIB 🕗`
 
 	_ = h.bot.SendMessage(SendMessageRequest{
