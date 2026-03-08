@@ -607,7 +607,7 @@ export default function Home() {
             </span>
           </div>
           <div className="text-sm" style={{ color: "#888" }}>
-            © 2026 GasCatet. Made with ❤️ and ☕
+            © 2026 <a href="https://github.com/armandawahyuu" target="_blank" rel="noopener noreferrer" className="font-bold hover:underline" style={{ color: "#888" }}>Codebyu</a>. Made with ❤️ and ☕
           </div>
         </div>
       </footer>
