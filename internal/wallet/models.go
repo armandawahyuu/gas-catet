@@ -24,6 +24,16 @@ type Category struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type Goal struct {
+	ID            pgtype.UUID        `json:"id"`
+	UserID        pgtype.UUID        `json:"user_id"`
+	Name          string             `json:"name"`
+	TargetAmount  int64              `json:"target_amount"`
+	CurrentAmount int64              `json:"current_amount"`
+	Deadline      pgtype.Date        `json:"deadline"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type RecurringTransaction struct {
 	ID              pgtype.UUID        `json:"id"`
 	UserID          pgtype.UUID        `json:"user_id"`

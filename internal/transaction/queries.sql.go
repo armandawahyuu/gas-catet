@@ -79,6 +79,47 @@ func (q *Queries) DeleteTransaction(ctx context.Context, arg DeleteTransactionPa
 	return err
 }
 
+const getDailyTotal = `-- name: GetDailyTotal :many
+SELECT transaction_type, COALESCE(SUM(amount), 0)::BIGINT AS total, COUNT(*)::BIGINT AS count
+FROM transactions
+WHERE user_id = $1
+  AND transaction_date >= $2
+  AND transaction_date < $3
+GROUP BY transaction_type
+`
+
+type GetDailyTotalParams struct {
+	UserID            pgtype.UUID        `json:"user_id"`
+	TransactionDate   pgtype.Timestamptz `json:"transaction_date"`
+	TransactionDate_2 pgtype.Timestamptz `json:"transaction_date_2"`
+}
+
+type GetDailyTotalRow struct {
+	TransactionType string `json:"transaction_type"`
+	Total           int64  `json:"total"`
+	Count           int64  `json:"count"`
+}
+
+func (q *Queries) GetDailyTotal(ctx context.Context, arg GetDailyTotalParams) ([]GetDailyTotalRow, error) {
+	rows, err := q.db.Query(ctx, getDailyTotal, arg.UserID, arg.TransactionDate, arg.TransactionDate_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDailyTotalRow
+	for rows.Next() {
+		var i GetDailyTotalRow
+		if err := rows.Scan(&i.TransactionType, &i.Total, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMonthlyTotal = `-- name: GetMonthlyTotal :many
 SELECT transaction_type, COALESCE(SUM(amount), 0)::BIGINT AS total
 FROM transactions

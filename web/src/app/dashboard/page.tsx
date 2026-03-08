@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [recentTx, setRecentTx] = useState<Transaction[]>([]);
   const [dailyData, setDailyData] = useState<DailyItem[]>([]);
+  const [todayData, setTodayData] = useState<{ total_income: number; total_expense: number; tx_count: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,11 +33,13 @@ export default function DashboardPage() {
       analytics.summary(year, month),
       transactions.list({ limit: 5 }),
       analytics.daily(year, month),
+      transactions.today(),
     ])
-      .then(([s, t, d]) => {
+      .then(([s, t, d, td]) => {
         setSummary(s);
         setRecentTx(t.transactions || []);
         setDailyData(d.days || []);
+        setTodayData(td);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -90,6 +93,41 @@ export default function DashboardPage() {
           color="#FFCC00"
         />
       </div>
+
+      {/* Today Widget */}
+      {todayData && (
+        <div
+          className="neo-border neo-shadow p-5 mb-8"
+          style={{ background: "#FFCC00" }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-lg">⚡</span>
+            <h2 className="font-heading text-lg font-bold uppercase tracking-wider">
+              Hari Ini
+            </h2>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs font-heading font-bold uppercase" style={{ color: "#333" }}>Pemasukan</p>
+              <p className="font-heading text-lg font-bold" style={{ color: "#00C781" }}>
+                +{formatRupiah(todayData.total_income)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-heading font-bold uppercase" style={{ color: "#333" }}>Pengeluaran</p>
+              <p className="font-heading text-lg font-bold" style={{ color: "#FF3B30" }}>
+                -{formatRupiah(todayData.total_expense)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-heading font-bold uppercase" style={{ color: "#333" }}>Transaksi</p>
+              <p className="font-heading text-lg font-bold">
+                {todayData.tx_count}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Charts + Recent */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">

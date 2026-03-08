@@ -144,6 +144,7 @@ export const transactions = {
     if (month) q.set("month", String(month));
     return request<TransactionSummary>(`/api/transactions/summary?${q}`);
   },
+  today: () => request<{ total_income: number; total_expense: number; tx_count: number }>("/api/transactions/today"),
   exportCSV: (year: number, month: number) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const q = new URLSearchParams({ year: String(year), month: String(month) });
@@ -356,6 +357,40 @@ export const recurringTx = {
     request<RecurringItem>(`/api/recurring/${id}/toggle`, { method: "PATCH" }),
   delete: (id: string) =>
     request<{ message: string }>(`/api/recurring/${id}`, { method: "DELETE" }),
+};
+
+// Goals
+export interface GoalItem {
+  id: string;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  deadline: string;
+}
+
+export interface GoalsListResponse {
+  goals: GoalItem[];
+}
+
+export const goals = {
+  list: () => request<GoalsListResponse>("/api/goals/"),
+  create: (data: { name: string; target_amount: number; deadline?: string }) =>
+    request<GoalItem>("/api/goals/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: { name: string; target_amount: number; deadline?: string }) =>
+    request<GoalItem>(`/api/goals/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  addAmount: (id: string, amount: number) =>
+    request<GoalItem>(`/api/goals/${id}/add`, {
+      method: "PATCH",
+      body: JSON.stringify({ amount }),
+    }),
+  delete: (id: string) =>
+    request<{ message: string }>(`/api/goals/${id}`, { method: "DELETE" }),
 };
 
 // Wallets

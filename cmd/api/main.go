@@ -8,6 +8,7 @@ import (
 	"gas-catet/internal/analytics"
 	"gas-catet/internal/category"
 	"gas-catet/internal/database"
+	"gas-catet/internal/goal"
 	"gas-catet/internal/recurring"
 	"gas-catet/internal/telegram"
 	"gas-catet/internal/transaction"
@@ -76,6 +77,10 @@ func main() {
 	recService := recurring.NewService(recQueries, txService)
 	recHandler := recurring.NewHandler(recService)
 
+	goalQueries := goal.New(pool)
+	goalService := goal.NewService(goalQueries)
+	goalHandler := goal.NewHandler(goalService)
+
 	// Start recurring transactions scheduler
 	recService.StartScheduler(ctx)
 
@@ -124,6 +129,7 @@ func main() {
 	txGroup.Post("/", txHandler.Create)
 	txGroup.Get("/", txHandler.List)
 	txGroup.Get("/summary", txHandler.MonthlySummary)
+	txGroup.Get("/today", txHandler.TodaySummary)
 	txGroup.Get("/export", txHandler.ExportCSV)
 	txGroup.Get("/:id", txHandler.GetByID)
 	txGroup.Put("/:id", txHandler.Update)
@@ -157,6 +163,13 @@ func main() {
 	recGroup.Put("/:id", recHandler.Update)
 	recGroup.Patch("/:id/toggle", recHandler.Toggle)
 	recGroup.Delete("/:id", recHandler.Delete)
+
+	goalGroup := api.Group("/goals", userHandler.AuthMiddleware)
+	goalGroup.Get("/", goalHandler.List)
+	goalGroup.Post("/", goalHandler.Create)
+	goalGroup.Put("/:id", goalHandler.Update)
+	goalGroup.Patch("/:id/add", goalHandler.AddAmount)
+	goalGroup.Delete("/:id", goalHandler.Delete)
 
 	analyticsGroup := api.Group("/analytics", userHandler.AuthMiddleware)
 	analyticsGroup.Get("/summary", analyticsHandler.Summary)

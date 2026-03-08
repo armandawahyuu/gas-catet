@@ -61,6 +61,12 @@ type SummaryResponse struct {
 	Balance      int64 `json:"balance"`
 }
 
+type TodaySummaryResponse struct {
+	TotalIncome  int64 `json:"total_income"`
+	TotalExpense int64 `json:"total_expense"`
+	TxCount      int64 `json:"tx_count"`
+}
+
 func NewService(queries *Queries) *Service {
 	return &Service{queries: queries}
 }
@@ -249,6 +255,35 @@ func (s *Service) GetMonthlySummary(ctx context.Context, userID pgtype.UUID, yea
 	summary.Balance = summary.TotalIncome - summary.TotalExpense
 
 	return summary, nil
+}
+
+func (s *Service) GetTodaySummary(ctx context.Context, userID pgtype.UUID) (TodaySummaryResponse, error) {
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now().In(loc)
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	end := start.AddDate(0, 0, 1)
+
+	rows, err := s.queries.GetDailyTotal(ctx, GetDailyTotalParams{
+		UserID:            userID,
+		TransactionDate:   pgtype.Timestamptz{Time: start, Valid: true},
+		TransactionDate_2: pgtype.Timestamptz{Time: end, Valid: true},
+	})
+	if err != nil {
+		return TodaySummaryResponse{}, fmt.Errorf("gagal ambil today summary: %w", err)
+	}
+
+	var resp TodaySummaryResponse
+	for _, row := range rows {
+		switch row.TransactionType {
+		case "INCOME":
+			resp.TotalIncome = row.Total
+			resp.TxCount += row.Count
+		case "EXPENSE":
+			resp.TotalExpense = row.Total
+			resp.TxCount += row.Count
+		}
+	}
+	return resp, nil
 }
 
 // CreateFromRecurring creates a transaction from a recurring template (used by recurring scheduler).

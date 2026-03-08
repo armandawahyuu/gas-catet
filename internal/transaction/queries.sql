@@ -64,3 +64,11 @@ WHERE t.user_id = $1
   )
 ORDER BY t.transaction_date DESC, t.created_at DESC
 LIMIT $3 OFFSET $4;
+
+-- name: GetDailyTotal :many
+SELECT transaction_type, COALESCE(SUM(amount), 0)::BIGINT AS total, COUNT(*)::BIGINT AS count
+FROM transactions
+WHERE user_id = $1
+  AND transaction_date >= $2
+  AND transaction_date < $3
+GROUP BY transaction_type;

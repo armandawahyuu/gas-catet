@@ -207,6 +207,20 @@ func (h *Handler) MonthlySummary(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+func (h *Handler) TodaySummary(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	resp, err := h.service.GetTodaySummary(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal ambil today summary"})
+	}
+
+	return c.JSON(resp)
+}
+
 func (h *Handler) ExportCSV(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(pgtype.UUID)
 	if !ok {
