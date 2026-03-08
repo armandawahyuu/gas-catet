@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { analytics, transactions, type AnalyticsSummary, type Transaction, type DailyItem } from "@/lib/api";
 import { formatRupiah, formatDate, getCurrentMonth } from "@/lib/utils";
 import {
@@ -9,6 +9,8 @@ import {
   Wallet,
   ArrowUpRight,
   ArrowDownRight,
+  Flame,
+  RefreshCw,
 } from "lucide-react";
 import {
   BarChart,
@@ -231,6 +233,70 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* AI Roast */}
+      <div className="mt-5">
+        <RoastCard />
+      </div>
+    </div>
+  );
+}
+
+function RoastCard() {
+  const { year, month } = getCurrentMonth();
+  const [roast, setRoast] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchRoast = useCallback(() => {
+    setLoading(true);
+    setError("");
+    analytics
+      .roast(year, month)
+      .then((r) => setRoast(r.roast))
+      .catch(() => setError("Gagal generate roast 😿"))
+      .finally(() => setLoading(false));
+  }, [year, month]);
+
+  useEffect(() => {
+    fetchRoast();
+  }, [fetchRoast]);
+
+  return (
+    <div
+      className="neo-card p-6"
+      style={{ background: "#FFF3E0", borderColor: "#FF6B00" }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Flame size={20} style={{ color: "#FF6B00" }} strokeWidth={3} />
+          <h2 className="font-heading text-lg font-bold" style={{ color: "#FF6B00" }}>
+            AI Roast 🔥
+          </h2>
+        </div>
+        <button
+          onClick={fetchRoast}
+          disabled={loading}
+          className="neo-btn px-3 py-1.5 text-xs font-bold flex items-center gap-1"
+          style={{ background: "#FF6B00", color: "#fff" }}
+        >
+          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+          Roast Lagi
+        </button>
+      </div>
+      {loading ? (
+        <div className="space-y-2 animate-pulse">
+          <div className="h-4 rounded" style={{ background: "#FFD9B3", width: "90%" }} />
+          <div className="h-4 rounded" style={{ background: "#FFD9B3", width: "75%" }} />
+          <div className="h-4 rounded" style={{ background: "#FFD9B3", width: "60%" }} />
+        </div>
+      ) : error ? (
+        <p className="text-sm" style={{ color: "#FF3B30" }}>{error}</p>
+      ) : (
+        <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#333" }}>
+          {roast}
+        </p>
+      )}
     </div>
   );
 }
