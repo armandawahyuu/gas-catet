@@ -148,7 +148,7 @@ export default function BudgetsPage() {
     try {
       const [budgetRes, catRes] = await Promise.all([
         budgetsApi.list(),
-        categoriesApi.list("expense"),
+        categoriesApi.list("EXPENSE"),
       ]);
       setBudgetList(budgetRes.budgets || []);
       setCategoryList(catRes.categories || []);
