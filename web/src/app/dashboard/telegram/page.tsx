@@ -164,33 +164,69 @@ export default function TelegramPage() {
             </a>
           )}
 
-          {/* Usage Guide */}
+          {/* All Commands Guide */}
           <div className="neo-card p-6">
             <h2 className="font-heading text-lg font-bold mb-3">
-              Cara Pakai Bot
+              Semua Perintah Bot
             </h2>
-            <div className="space-y-3 text-sm">
-              <CommandRow cmd="/start" desc="Buka menu utama — pilih catat pengeluaran atau pemasukan lewat chat" />
-              <CommandRow cmd="/saldo" desc="Lihat ringkasan saldo & pengeluaran bulan ini" />
-              <CommandRow cmd="/help" desc="Panduan lengkap semua perintah bot" />
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-heading font-bold uppercase tracking-wider mb-2" style={{ color: "#999" }}>Menu Utama</p>
+                <div className="space-y-2 text-sm">
+                  <CommandRow cmd="/start" desc="Buka menu catat — pilih pengeluaran atau pemasukan" />
+                  <CommandRow cmd="/batal" desc="Batalkan input yang sedang berjalan" />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-heading font-bold uppercase tracking-wider mb-2" style={{ color: "#999" }}>Lihat Keuangan</p>
+                <div className="space-y-2 text-sm">
+                  <CommandRow cmd="/saldo" desc="Ringkasan saldo & pengeluaran bulan ini" />
+                  <CommandRow cmd="/laporan" desc="Laporan lengkap hari ini + bulan ini" />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-heading font-bold uppercase tracking-wider mb-2" style={{ color: "#999" }}>Quick Add (1 pesan langsung jadi)</p>
+                <div className="space-y-2 text-sm">
+                  <CommandRow cmd="/catat 25000 kopi" desc="Catat pengeluaran instan" />
+                  <CommandRow cmd="/masuk 5000000 gaji" desc="Catat pemasukan instan" />
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Quick Demo */}
           <div className="neo-card p-6" style={{ background: "#121212", color: "white" }}>
             <h2 className="font-heading text-lg font-bold mb-3" style={{ color: "#FFCC00" }}>
-              💡 Contoh Cepat
+              💡 Contoh Flow Lengkap
             </h2>
             <div className="space-y-2 text-sm font-mono">
               <div><span style={{ color: "#00C781" }}>Kamu:</span> /start</div>
               <div><span style={{ color: "#FFCC00" }}>Bot:</span> Mau nyatet apa nih bos? 📝</div>
               <div><span style={{ color: "#00C781" }}>Kamu:</span> tap 💸 Pengeluaran</div>
+              <div><span style={{ color: "#FFCC00" }}>Bot:</span> Pilih kategorinya:</div>
+              <div><span style={{ color: "#00C781" }}>Kamu:</span> tap Makan</div>
               <div><span style={{ color: "#FFCC00" }}>Bot:</span> Beli apa tuh?</div>
               <div><span style={{ color: "#00C781" }}>Kamu:</span> Kopi Susu</div>
               <div><span style={{ color: "#FFCC00" }}>Bot:</span> Berapa harganya?</div>
               <div><span style={{ color: "#00C781" }}>Kamu:</span> 25000</div>
+              <div><span style={{ color: "#FFCC00" }}>Bot:</span> Kapan transaksinya?</div>
+              <div><span style={{ color: "#00C781" }}>Kamu:</span> tap 🕒 Hari Ini</div>
+              <div><span style={{ color: "#FFCC00" }}>Bot:</span> 📋 Cek dulu ya bos...</div>
+              <div><span style={{ color: "#00C781" }}>Kamu:</span> tap ✅ Simpan</div>
               <div><span style={{ color: "#FFCC00" }}>Bot:</span> ✅ Gas! Udah dicatet bos!</div>
             </div>
+          </div>
+
+          {/* Tips */}
+          <div className="neo-card p-5" style={{ background: "#FFFDE7" }}>
+            <h3 className="font-heading text-sm font-bold mb-2">💡 Tips</h3>
+            <ul className="space-y-1 text-xs" style={{ color: "#666" }}>
+              <li>• Nominal bisa pakai titik: <strong>25.000</strong></li>
+              <li>• Tanggal bisa DD/MM/YYYY atau DD-MM-YYYY</li>
+              <li>• Quick add (<strong>/catat</strong>) otomatis masuk kategori &quot;Lainnya&quot;</li>
+              <li>• Laporan otomatis dikirim setiap jam <strong>20:00 WIB</strong></li>
+              <li>• Ketik <strong>/batal</strong> kapan saja untuk batalkan input</li>
+            </ul>
           </div>
         </div>
       )}

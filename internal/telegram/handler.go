@@ -83,6 +83,10 @@ func (h *Handler) handleMessage(msg *Message) {
 	// Handle FSM state input
 	session := h.fsm.GetSession(chatID)
 	switch session.State {
+	case StateIdle:
+		// Session expired or no state — guide user back
+		h.sendMessage(chatID, "Sesi sebelumnya sudah berakhir. Ketik /start untuk mulai lagi ya bos 👇")
+		h.sendMainMenu(chatID)
 	case StateWaitingCategory:
 		// Category is selected via callback, not text input
 		h.sendMessage(chatID, "⚠️ Pilih kategori pakai tombol di atas ya bos.")
@@ -92,6 +96,8 @@ func (h *Handler) handleMessage(msg *Message) {
 		h.handleAmountInput(chatID, telegramID, text)
 	case StateWaitingCustomDate:
 		h.handleCustomDateInput(chatID, telegramID, text)
+	case StateWaitingConfirm:
+		h.sendMessage(chatID, "⚠️ Pakai tombol di atas ya bos — ✅ Simpan atau ✏️ Edit.")
 	default:
 		h.sendMainMenu(chatID)
 	}
@@ -122,6 +128,15 @@ func (h *Handler) handleCommand(chatID, telegramID int64, text string) {
 		h.handleQuickAdd(chatID, telegramID, strings.TrimPrefix(text, "/masuk "), TypeIncome)
 	case text == "/help":
 		h.sendHelp(chatID)
+	case text == "/batal":
+		session := h.fsm.GetSession(chatID)
+		if session.State != StateIdle {
+			h.fsm.ResetSession(chatID)
+			h.sendMessage(chatID, "❌ Dibatalin ya bos. Mau nyatet lagi?")
+			h.sendMainMenu(chatID)
+		} else {
+			h.sendMessage(chatID, "Nggak ada yang perlu dibatalin bos. Ketik /start untuk mulai 👇")
+		}
 	default:
 		h.sendMainMenu(chatID)
 	}
@@ -151,6 +166,10 @@ func (h *Handler) handleCallback(cb *CallbackQuery) {
 		h.handleDateSelection(chatID, cb.From.ID, "yesterday")
 	case data == "date_custom":
 		h.handleCustomDatePrompt(chatID)
+	case data == "confirm_save":
+		h.handleConfirmSave(chatID, cb.From.ID)
+	case data == "edit_back":
+		h.handleEditBack(chatID)
 	case data == "cancel":
 		h.fsm.ResetSession(chatID)
 		h.sendMessage(chatID, "❌ Dibatalin ya bos. Mau nyatet lagi?")
@@ -383,7 +402,7 @@ func (h *Handler) showDateSelection(chatID int64) {
 	})
 }
 
-// State 5 (Finish): Got date, insert to DB
+// State 5: Got date, show confirmation before saving
 func (h *Handler) handleDateSelection(chatID, telegramID int64, dateChoice string) {
 	session := h.fsm.GetSession(chatID)
 	if session.State != StateWaitingDate {
@@ -394,79 +413,18 @@ func (h *Handler) handleDateSelection(chatID, telegramID int64, dateChoice strin
 	loc := time.FixedZone("WIB", 7*60*60)
 	now := time.Now().In(loc)
 
-	var txDate string
 	switch dateChoice {
 	case "today":
-		txDate = now.Format("2006-01-02")
+		session.TxDate = now.Format("2006-01-02")
 	case "yesterday":
-		txDate = now.AddDate(0, 0, -1).Format("2006-01-02")
+		session.TxDate = now.AddDate(0, 0, -1).Format("2006-01-02")
 	default:
-		txDate = now.Format("2006-01-02")
+		session.TxDate = now.Format("2006-01-02")
 	}
 
-	// Get user by telegram ID
-	ctx := context.Background()
-	userRow, err := h.getUserByTelegramID(ctx, telegramID)
-	if err != nil {
-		h.sendMessage(chatID, "⚠️ Gagal ambil data user. Coba lagi nanti ya bos.")
-		h.fsm.ResetSession(chatID)
-		return
-	}
-
-	// Create transaction
-	_, err = h.txSvc.Create(ctx, userRow.ID, transaction.CreateRequest{
-		Amount:          session.Amount,
-		TransactionType: session.TransactionType,
-		Description:     session.Description,
-		Category:        session.Category,
-		WalletID:        session.WalletID,
-		TransactionDate: txDate,
-	})
-
-	if err != nil {
-		log.Printf("Error creating transaction: %v", err)
-		h.sendMessage(chatID, "⚠️ Gagal nyimpen transaksi. Coba lagi ya bos.")
-		h.fsm.ResetSession(chatID)
-		return
-	}
-
-	// Update wallet balance
-	if session.WalletID != "" {
-		var wID pgtype.UUID
-		_ = wID.Scan(session.WalletID)
-		delta := -session.Amount
-		if session.TransactionType == TypeIncome {
-			delta = session.Amount
-		}
-		_ = h.walSvc.UpdateBalance(ctx, wID, delta)
-	}
-
-	// Format the amount
-	amountStr := formatRupiah(session.Amount)
-
-	typeEmoji := "💸"
-	typeLabel := "Pengeluaran"
-	if session.TransactionType == TypeIncome {
-		typeEmoji = "💰"
-		typeLabel = "Pemasukan"
-	}
-
-	walletLine := ""
-	if session.WalletName != "" {
-		walletLine = fmt.Sprintf("\n👛 %s", session.WalletName)
-	}
-
-	msg := fmt.Sprintf("✅ Gas! Udah dicatet bos!\n\n%s %s\n📝 %s\n🏷️ %s\n💵 %s\n📅 %s%s",
-		typeEmoji, typeLabel,
-		session.Description,
-		session.Category,
-		amountStr,
-		txDate,
-		walletLine,
-	)
-
-	h.sendMessage(chatID, msg)
-	h.fsm.ResetSession(chatID)
+	session.State = StateWaitingConfirm
+	h.fsm.SetSession(chatID, session)
+	h.showConfirmation(chatID, session)
 }
 
 // Custom date: prompt user to type date
@@ -487,10 +445,13 @@ func (h *Handler) handleCustomDatePrompt(chatID int64) {
 func (h *Handler) handleCustomDateInput(chatID, telegramID int64, text string) {
 	text = strings.TrimSpace(text)
 
+	// Accept both DD/MM/YYYY and DD-MM-YYYY
+	text = strings.ReplaceAll(text, "-", "/")
+
 	// Parse DD/MM/YYYY
 	parsed, err := time.Parse("02/01/2006", text)
 	if err != nil {
-		h.sendMessage(chatID, "⚠️ Format tanggal nggak valid bos. Pakai DD/MM/YYYY ya.\n\nContoh: 05/03/2026")
+		h.sendMessage(chatID, "⚠️ Format tanggal nggak valid bos. Pakai DD/MM/YYYY ya.\n\nContoh: 05/03/2026 atau 05-03-2026")
 		return
 	}
 
@@ -502,9 +463,66 @@ func (h *Handler) handleCustomDateInput(chatID, telegramID int64, text string) {
 		return
 	}
 
-	txDate := parsed.Format("2006-01-02")
-
 	session := h.fsm.GetSession(chatID)
+	session.TxDate = parsed.Format("2006-01-02")
+	session.State = StateWaitingConfirm
+	h.fsm.SetSession(chatID, session)
+	h.showConfirmation(chatID, session)
+}
+
+// Confirmation step: show summary before saving
+func (h *Handler) showConfirmation(chatID int64, session *UserSession) {
+	typeEmoji := "💸"
+	typeLabel := "Pengeluaran"
+	if session.TransactionType == TypeIncome {
+		typeEmoji = "💰"
+		typeLabel = "Pemasukan"
+	}
+
+	walletLine := ""
+	if session.WalletName != "" {
+		walletLine = fmt.Sprintf("👛 Dompet: %s\n", session.WalletName)
+	}
+
+	msg := fmt.Sprintf("📋 *Cek dulu ya bos, bener nggak?*\n\n"+
+		"%s *%s*\n"+
+		"📝 %s\n"+
+		"🏷️ %s\n"+
+		"💵 %s\n"+
+		"📅 %s\n"+
+		"%s\n"+
+		"Udah bener? Tap ✅ buat simpan!",
+		typeEmoji, typeLabel,
+		session.Description,
+		session.Category,
+		formatRupiah(session.Amount),
+		session.TxDate,
+		walletLine,
+	)
+
+	_ = h.bot.SendMessage(SendMessageRequest{
+		ChatID:    chatID,
+		Text:      msg,
+		ParseMode: "Markdown",
+		ReplyMarkup: &ReplyMarkup{
+			InlineKeyboard: [][]InlineKeyboardButton{
+				{
+					{Text: "✅ Simpan", CallbackData: "confirm_save"},
+					{Text: "✏️ Ulangi", CallbackData: "edit_back"},
+				},
+				{{Text: "❌ Batal", CallbackData: "cancel"}},
+			},
+		},
+	})
+}
+
+// Handle confirmation: actually save the transaction
+func (h *Handler) handleConfirmSave(chatID, telegramID int64) {
+	session := h.fsm.GetSession(chatID)
+	if session.State != StateWaitingConfirm {
+		h.sendMainMenu(chatID)
+		return
+	}
 
 	ctx := context.Background()
 	userRow, err := h.getUserByTelegramID(ctx, telegramID)
@@ -520,7 +538,7 @@ func (h *Handler) handleCustomDateInput(chatID, telegramID int64, text string) {
 		Description:     session.Description,
 		Category:        session.Category,
 		WalletID:        session.WalletID,
-		TransactionDate: txDate,
+		TransactionDate: session.TxDate,
 	})
 
 	if err != nil {
@@ -541,7 +559,6 @@ func (h *Handler) handleCustomDateInput(chatID, telegramID int64, text string) {
 		_ = h.walSvc.UpdateBalance(ctx, wID, delta)
 	}
 
-	amountStr := formatRupiah(session.Amount)
 	typeEmoji := "💸"
 	typeLabel := "Pengeluaran"
 	if session.TransactionType == TypeIncome {
@@ -558,13 +575,20 @@ func (h *Handler) handleCustomDateInput(chatID, telegramID int64, text string) {
 		typeEmoji, typeLabel,
 		session.Description,
 		session.Category,
-		amountStr,
-		txDate,
+		formatRupiah(session.Amount),
+		session.TxDate,
 		walletLine,
 	)
 
 	h.sendMessage(chatID, msg)
 	h.fsm.ResetSession(chatID)
+}
+
+// Handle edit: go back to main menu to start over
+func (h *Handler) handleEditBack(chatID int64) {
+	h.fsm.ResetSession(chatID)
+	h.sendMessage(chatID, "🔄 Oke, ulangi dari awal ya bos!")
+	h.sendMainMenu(chatID)
 }
 
 func (h *Handler) handleLinkToken(chatID, telegramID int64, token string) {
@@ -611,30 +635,32 @@ func (h *Handler) handleSaldo(chatID, telegramID int64) {
 }
 
 func (h *Handler) sendHelp(chatID int64) {
-	msg := `🤖 *GasCatet Bot*
+	msg := `🤖 *Panduan GasCatet Bot*
 
-Perintah:
-/start - Menu utama
-/saldo - Cek saldo bulan ini
-/laporan - Laporan keuangan lengkap
-/catat <nominal> <deskripsi> - Quick add pengeluaran
-/masuk <nominal> <deskripsi> - Quick add pemasukan
-/link <token> - Hubungkan akun Telegram
-/help - Bantuan
+📌 *Menu Utama*
+/start — Buka menu catat transaksi
+/batal — Batalkan input yang sedang berjalan
 
-Quick Add:
-/catat 40000 kopi starbucks
-/masuk 5000000 gaji bulanan
+💰 *Lihat Keuangan*
+/saldo — Ringkasan saldo bulan ini
+/laporan — Laporan lengkap hari ini & bulan ini
 
-📊 Laporan otomatis dikirim setiap jam 20:00 WIB
+⚡ *Quick Add (1 pesan langsung jadi)*
+/catat <nominal> <deskripsi>
+→ Contoh: /catat 25000 kopi susu
 
-Cara pakai (menu):
-1. Tap /start
-2. Pilih Pengeluaran/Pemasukan
-3. Ketik nama barang
-4. Ketik harga
-5. Pilih tanggal
-Done! ✅`
+/masuk <nominal> <deskripsi>
+→ Contoh: /masuk 5000000 gaji bulanan
+
+🔗 *Akun*
+/link <token> — Hubungkan akun Telegram
+/help — Tampilkan bantuan ini
+
+💡 *Tips:*
+• Nominal bisa pakai titik: 25.000
+• Tanggal bisa DD/MM/YYYY atau DD-MM-YYYY
+• Quick add otomatis masuk kategori "Lainnya"
+• Laporan otomatis dikirim jam 20:00 WIB 🕗`
 
 	_ = h.bot.SendMessage(SendMessageRequest{
 		ChatID:    chatID,
