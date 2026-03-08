@@ -35,14 +35,14 @@ const BUDGET_TEMPLATES: Template[] = [
     savingsPct: 20,
     savingsTip: "20% untuk tabungan darurat, investasi, atau bayar utang ekstra",
     items: [
-      { category: "Makan", pct: 20 },
-      { category: "Rumah", pct: 20 },
+      { category: "Makan", pct: 15 },
+      { category: "Rumah", pct: 15 },
       { category: "Transport", pct: 10 },
-      { category: "Belanja", pct: 15 },
+      { category: "Belanja", pct: 10 },
       { category: "Hiburan", pct: 10 },
       { category: "Kesehatan", pct: 5 },
       { category: "Pendidikan", pct: 5 },
-      { category: "Lainnya", pct: 15 },
+      { category: "Lainnya", pct: 10 },
     ],
   },
   {
@@ -94,13 +94,12 @@ const BUDGET_TEMPLATES: Template[] = [
     savingsTip: "10% tabungan jangka panjang, 10% investasi (financial freedom), 5% sedekah",
     items: [
       { category: "Makan", pct: 20 },
-      { category: "Rumah", pct: 20 },
+      { category: "Rumah", pct: 15 },
       { category: "Transport", pct: 10 },
       { category: "Belanja", pct: 5 },
       { category: "Hiburan", pct: 10 },
       { category: "Kesehatan", pct: 5 },
       { category: "Pendidikan", pct: 10 },
-      { category: "Lainnya", pct: 5 },
     ],
   },
   {
