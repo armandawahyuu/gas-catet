@@ -172,7 +172,7 @@ export default function SettingsPage() {
           </div>
           {profile?.plan !== "pro" && (
             <a
-              href="https://dna-indonesia.myr.id"
+              href="https://dna-indonesia.myr.id/m/gascatet-pro"
               target="_blank"
               rel="noopener noreferrer"
               className="neo-btn px-5 py-2.5 text-sm font-bold text-white"
