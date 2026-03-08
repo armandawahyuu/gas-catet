@@ -11,6 +11,98 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const allCategories = `-- name: AllCategories :many
+SELECT category,
+       transaction_type,
+       COUNT(*)::BIGINT AS tx_count,
+       COALESCE(SUM(amount), 0)::BIGINT AS total_amount
+FROM transactions
+GROUP BY category, transaction_type
+ORDER BY total_amount DESC
+`
+
+type AllCategoriesRow struct {
+	Category        string `json:"category"`
+	TransactionType string `json:"transaction_type"`
+	TxCount         int64  `json:"tx_count"`
+	TotalAmount     int64  `json:"total_amount"`
+}
+
+func (q *Queries) AllCategories(ctx context.Context) ([]AllCategoriesRow, error) {
+	rows, err := q.db.Query(ctx, allCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AllCategoriesRow
+	for rows.Next() {
+		var i AllCategoriesRow
+		if err := rows.Scan(
+			&i.Category,
+			&i.TransactionType,
+			&i.TxCount,
+			&i.TotalAmount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const allTransactions = `-- name: AllTransactions :many
+SELECT t.id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.created_at,
+       u.name AS user_name, u.email AS user_email
+FROM transactions t
+JOIN users u ON u.id = t.user_id
+ORDER BY t.created_at DESC
+`
+
+type AllTransactionsRow struct {
+	ID              pgtype.UUID        `json:"id"`
+	Amount          int64              `json:"amount"`
+	TransactionType string             `json:"transaction_type"`
+	Description     pgtype.Text        `json:"description"`
+	Category        string             `json:"category"`
+	TransactionDate pgtype.Timestamptz `json:"transaction_date"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UserName        string             `json:"user_name"`
+	UserEmail       string             `json:"user_email"`
+}
+
+func (q *Queries) AllTransactions(ctx context.Context) ([]AllTransactionsRow, error) {
+	rows, err := q.db.Query(ctx, allTransactions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AllTransactionsRow
+	for rows.Next() {
+		var i AllTransactionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Amount,
+			&i.TransactionType,
+			&i.Description,
+			&i.Category,
+			&i.TransactionDate,
+			&i.CreatedAt,
+			&i.UserName,
+			&i.UserEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countActiveUsers = `-- name: CountActiveUsers :one
 SELECT COUNT(DISTINCT user_id)::BIGINT AS total
 FROM transactions
@@ -55,6 +147,42 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 	var total int64
 	err := row.Scan(&total)
 	return total, err
+}
+
+const dailyVolume = `-- name: DailyVolume :many
+SELECT transaction_date::TEXT AS date_str,
+       COALESCE(SUM(CASE WHEN transaction_type = 'INCOME' THEN amount ELSE 0 END), 0)::BIGINT AS income,
+       COALESCE(SUM(CASE WHEN transaction_type = 'EXPENSE' THEN amount ELSE 0 END), 0)::BIGINT AS expense
+FROM transactions
+WHERE transaction_date >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY transaction_date
+ORDER BY transaction_date
+`
+
+type DailyVolumeRow struct {
+	DateStr string `json:"date_str"`
+	Income  int64  `json:"income"`
+	Expense int64  `json:"expense"`
+}
+
+func (q *Queries) DailyVolume(ctx context.Context) ([]DailyVolumeRow, error) {
+	rows, err := q.db.Query(ctx, dailyVolume)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DailyVolumeRow
+	for rows.Next() {
+		var i DailyVolumeRow
+		if err := rows.Scan(&i.DateStr, &i.Income, &i.Expense); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getDatabaseSize = `-- name: GetDatabaseSize :one
@@ -251,4 +379,37 @@ func (q *Queries) TransactionsToday(ctx context.Context) (int64, error) {
 	var total int64
 	err := row.Scan(&total)
 	return total, err
+}
+
+const userGrowth = `-- name: UserGrowth :many
+SELECT created_at::date::TEXT AS date_str,
+       COUNT(*)::BIGINT AS new_users
+FROM users
+GROUP BY created_at::date
+ORDER BY created_at::date
+`
+
+type UserGrowthRow struct {
+	DateStr  string `json:"date_str"`
+	NewUsers int64  `json:"new_users"`
+}
+
+func (q *Queries) UserGrowth(ctx context.Context) ([]UserGrowthRow, error) {
+	rows, err := q.db.Query(ctx, userGrowth)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserGrowthRow
+	for rows.Next() {
+		var i UserGrowthRow
+		if err := rows.Scan(&i.DateStr, &i.NewUsers); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

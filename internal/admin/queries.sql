@@ -52,3 +52,35 @@ LIMIT 10;
 
 -- name: GetDatabaseSize :one
 SELECT pg_size_pretty(pg_database_size(current_database())) AS db_size;
+
+-- name: DailyVolume :many
+SELECT transaction_date::TEXT AS date_str,
+       COALESCE(SUM(CASE WHEN transaction_type = 'INCOME' THEN amount ELSE 0 END), 0)::BIGINT AS income,
+       COALESCE(SUM(CASE WHEN transaction_type = 'EXPENSE' THEN amount ELSE 0 END), 0)::BIGINT AS expense
+FROM transactions
+WHERE transaction_date >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY transaction_date
+ORDER BY transaction_date;
+
+-- name: AllCategories :many
+SELECT category,
+       transaction_type,
+       COUNT(*)::BIGINT AS tx_count,
+       COALESCE(SUM(amount), 0)::BIGINT AS total_amount
+FROM transactions
+GROUP BY category, transaction_type
+ORDER BY total_amount DESC;
+
+-- name: UserGrowth :many
+SELECT created_at::date::TEXT AS date_str,
+       COUNT(*)::BIGINT AS new_users
+FROM users
+GROUP BY created_at::date
+ORDER BY created_at::date;
+
+-- name: AllTransactions :many
+SELECT t.id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.created_at,
+       u.name AS user_name, u.email AS user_email
+FROM transactions t
+JOIN users u ON u.id = t.user_id
+ORDER BY t.created_at DESC;

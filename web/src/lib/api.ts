@@ -542,7 +542,34 @@ export interface AdminDashboard {
   top_categories: AdminTopCategory[];
 }
 
+export interface AdminDailyVolume {
+  date: string;
+  income: number;
+  expense: number;
+}
+
+export interface AdminCategoryBreakdown {
+  category: string;
+  transaction_type: "INCOME" | "EXPENSE";
+  tx_count: number;
+  total_amount: number;
+}
+
+export interface AdminUserGrowth {
+  date: string;
+  new_users: number;
+}
+
+export interface AdminAnalytics {
+  daily_volume: AdminDailyVolume[];
+  categories: AdminCategoryBreakdown[];
+  user_growth: AdminUserGrowth[];
+}
+
 export const adminApi = {
   check: () => request<{ is_admin: boolean }>("/api/admin/check"),
   dashboard: () => request<AdminDashboard>("/api/admin/dashboard"),
+  analytics: () => request<AdminAnalytics>("/api/admin/analytics"),
+  transactions: () =>
+    request<{ transactions: AdminRecentTx[] }>("/api/admin/transactions"),
 };

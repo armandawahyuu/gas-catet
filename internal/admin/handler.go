@@ -50,3 +50,25 @@ func (h *Handler) CheckAdmin(c *fiber.Ctx) error {
 		"is_admin": h.adminEmails[email],
 	})
 }
+
+func (h *Handler) Analytics(c *fiber.Ctx) error {
+	data, err := h.service.GetAnalytics(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "gagal ambil data analitik",
+		})
+	}
+	return c.JSON(data)
+}
+
+func (h *Handler) AllTransactions(c *fiber.Ctx) error {
+	data, err := h.service.GetAllTransactions(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "gagal ambil data transaksi",
+		})
+	}
+	return c.JSON(fiber.Map{
+		"transactions": data,
+	})
+}

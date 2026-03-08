@@ -1,9 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import { adminApi } from "@/lib/api";
-import { Shield, LogOut, Zap } from "lucide-react";
+import {
+  Shield,
+  LogOut,
+  Zap,
+  LayoutDashboard,
+  BarChart3,
+  Users,
+  Receipt,
+  Menu,
+  X,
+} from "lucide-react";
+
+const navItems = [
+  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/dashboard/analytics", label: "Analitik", icon: BarChart3 },
+  { href: "/admin/dashboard/users", label: "Users", icon: Users },
+  { href: "/admin/dashboard/transactions", label: "Transaksi", icon: Receipt },
+];
 
 export default function AdminDashboardLayout({
   children,
@@ -11,9 +29,11 @@ export default function AdminDashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
   const [checking, setChecking] = useState(true);
   const [email, setEmail] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -28,7 +48,6 @@ export default function AdminDashboardLayout({
           router.push("/admin");
         } else {
           setAuthorized(true);
-          // Decode email from JWT
           try {
             const payload = JSON.parse(atob(token.split(".")[1]));
             setEmail(payload.email || "");
@@ -60,49 +79,111 @@ export default function AdminDashboardLayout({
   if (!authorized) return null;
 
   return (
-    <div className="min-h-screen" style={{ background: "#FAFAFA" }}>
-      {/* Top Bar */}
-      <header
-        className="flex items-center justify-between px-6 py-4 neo-border"
-        style={{
-          background: "#FFFFFF",
-          borderTop: "none",
-          borderLeft: "none",
-          borderRight: "none",
-          borderBottom: "3px solid #121212",
-        }}
+    <div className="min-h-screen flex" style={{ background: "#FAFAFA" }}>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-60 neo-border flex flex-col transition-transform lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{ background: "#FFFFFF", borderRight: "3px solid #121212" }}
       >
-        <div className="flex items-center gap-4">
+        {/* Logo */}
+        <div
+          className="p-5 flex items-center gap-3"
+          style={{ borderBottom: "3px solid #121212" }}
+        >
           <div
             className="w-10 h-10 flex items-center justify-center neo-border"
             style={{ background: "#FF3B30" }}
           >
             <Shield size={20} strokeWidth={3} className="text-white" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <Zap size={16} strokeWidth={3} style={{ color: "#FFCC00" }} />
-              <h1 className="font-heading text-lg font-bold tracking-tight">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1">
+              <Zap size={14} strokeWidth={3} style={{ color: "#FFCC00" }} />
+              <span className="font-heading text-sm font-bold tracking-tight">
                 GasCatet Admin
-              </h1>
+              </span>
             </div>
-            <p className="text-xs" style={{ color: "#666" }}>
+            <p className="text-xs truncate" style={{ color: "#666" }}>
               {email}
             </p>
           </div>
+          <button
+            className="lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X size={20} />
+          </button>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 neo-border neo-shadow font-heading text-xs font-bold uppercase tracking-wider transition-all hover:translate-y-0.5 hover:shadow-none"
-          style={{ background: "#FF3B30", color: "#FFF" }}
-        >
-          <LogOut size={14} strokeWidth={3} />
-          Keluar
-        </button>
-      </header>
 
-      {/* Content */}
-      <main className="p-6 lg:p-8 max-w-7xl mx-auto">{children}</main>
+        {/* Nav items */}
+        <nav className="flex-1 p-3 space-y-1">
+          {navItems.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 font-heading text-sm font-bold uppercase tracking-wider transition-all ${
+                  active
+                    ? "neo-border neo-shadow text-white"
+                    : "hover:bg-gray-100"
+                }`}
+                style={active ? { background: "#FF3B30" } : {}}
+              >
+                <item.icon size={18} strokeWidth={2.5} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Logout */}
+        <div className="p-4" style={{ borderTop: "3px solid #121212" }}>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-sm font-heading font-bold uppercase tracking-wider hover:opacity-70 transition-opacity"
+            style={{ color: "#FF3B30" }}
+          >
+            <LogOut size={16} strokeWidth={2.5} />
+            Keluar
+          </button>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 min-w-0 lg:ml-60">
+        {/* Mobile header */}
+        <div
+          className="lg:hidden flex items-center gap-3 p-4"
+          style={{ borderBottom: "3px solid #121212", background: "#FFFFFF" }}
+        >
+          <button onClick={() => setSidebarOpen(true)}>
+            <Menu size={24} strokeWidth={2.5} />
+          </button>
+          <div className="flex items-center gap-2">
+            <div
+              className="w-8 h-8 flex items-center justify-center neo-border"
+              style={{ background: "#FF3B30" }}
+            >
+              <Shield size={16} strokeWidth={3} className="text-white" />
+            </div>
+            <span className="font-heading text-lg font-bold">Admin</span>
+          </div>
+        </div>
+
+        <div className="p-6 lg:p-8 max-w-7xl mx-auto">{children}</div>
+      </main>
     </div>
   );
 }

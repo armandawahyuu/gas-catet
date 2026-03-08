@@ -197,6 +197,8 @@ func main() {
 
 	adminGroup := api.Group("/admin", userHandler.AuthMiddleware, adminHandler.AdminOnly)
 	adminGroup.Get("/dashboard", adminHandler.Dashboard)
+	adminGroup.Get("/analytics", adminHandler.Analytics)
+	adminGroup.Get("/transactions", adminHandler.AllTransactions)
 
 	// Check admin status (auth required, no admin-only)
 	api.Get("/admin/check", userHandler.AuthMiddleware, adminHandler.CheckAdmin)
