@@ -170,7 +170,7 @@ export default function Home() {
               className="neo-btn px-5 py-2 text-sm text-white"
               style={{ background: "#FF3B30" }}
             >
-              Daftar Gratis
+              Coba Gratis
             </Link>
           </div>
         </div>
@@ -185,7 +185,7 @@ export default function Home() {
               style={{ background: "#FFCC00" }}
             >
               <Zap size={16} strokeWidth={3} />
-              100% GRATIS — TANPA EMBEL-EMBEL
+              EARLY ACCESS — GRATIS SEMUA FITUR
             </div>
 
             <h1 className="font-heading text-5xl md:text-7xl font-black leading-[0.95] tracking-tight mb-6">
@@ -451,8 +451,8 @@ export default function Home() {
               {
                 icon: Star,
                 color: "#FFCC00",
-                title: "Gratis Selamanya",
-                desc: "Semua fitur gratis. Gak ada premium, gak ada batas. Serius.",
+                title: "Gratis Saat Ini",
+                desc: "Lagi masa early access — semua fitur bisa kamu pake gratis. Buruan cobain!",
               },
               {
                 icon: TrendingUp,
@@ -498,7 +498,7 @@ export default function Home() {
               className="neo-btn px-10 py-4 text-base inline-flex items-center justify-center gap-2"
               style={{ background: "#FFCC00", color: "#121212" }}
             >
-              Daftar Gratis Sekarang
+              Cobain Gratis Sekarang
               <ArrowRight size={18} strokeWidth={3} />
             </Link>
             <Link
@@ -509,6 +509,7 @@ export default function Home() {
               Udah Punya Akun? Masuk
             </Link>
           </div>
+          <p className="text-sm mt-6 opacity-70">🚀 Masa early access — semua fitur gratis, feedback kamu sangat berarti!</p>
         </div>
       </section>
 
