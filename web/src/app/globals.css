@@ -108,3 +108,29 @@ body {
 .recharts-tooltip-wrapper {
   outline: none !important;
 }
+
+/* ── Landing page animations ── */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+  width: max-content;
+}
+
+@keyframes float {
+  0%, 100% { transform: rotate(6deg) translateY(0); }
+  50% { transform: rotate(6deg) translateY(-12px); }
+}
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: rotate(-3deg) translateY(0); }
+  50% { transform: rotate(-3deg) translateY(-8px); }
+}
+.animate-float-slow {
+  animation: float-slow 5s ease-in-out infinite;
+}
