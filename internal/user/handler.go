@@ -231,3 +231,17 @@ func (h *Handler) AuthMiddleware(c *fiber.Ctx) error {
 	c.Locals("user_email", email)
 	return c.Next()
 }
+
+func (h *Handler) UnlinkTelegram(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	resp, err := h.service.UnlinkTelegram(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal putuskan koneksi telegram"})
+	}
+
+	return c.JSON(resp)
+}

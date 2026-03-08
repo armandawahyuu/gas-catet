@@ -3,13 +3,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { user as userApi, telegram as telegramApi } from "@/lib/api";
-import { Link2, Check, MessageCircle, Send, ExternalLink, Loader2 } from "lucide-react";
+import { Link2, Check, MessageCircle, Send, ExternalLink, Loader2, Unplug } from "lucide-react";
 
 export default function TelegramPage() {
   const { profile, refreshProfile } = useAuth();
   const [botUsername, setBotUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [linking, setLinking] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isLinked = profile?.telegram_id && profile.telegram_id > 0;
@@ -52,6 +54,19 @@ export default function TelegramPage() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    try {
+      await userApi.unlinkTelegram();
+      await refreshProfile();
+      setShowDisconnectConfirm(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -191,6 +206,13 @@ export default function TelegramPage() {
                   <CommandRow cmd="/masuk 5000000 gaji" desc="Catat pemasukan instan" />
                 </div>
               </div>
+              <div>
+                <p className="text-xs font-heading font-bold uppercase tracking-wider mb-2" style={{ color: "#999" }}>Akun</p>
+                <div className="space-y-2 text-sm">
+                  <CommandRow cmd="/akun" desc="Lihat info akun yang terhubung" />
+                  <CommandRow cmd="/diskonek" desc="Putuskan koneksi Telegram" />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -227,6 +249,43 @@ export default function TelegramPage() {
               <li>• Laporan otomatis dikirim setiap jam <strong>20:00 WIB</strong></li>
               <li>• Ketik <strong>/batal</strong> kapan saja untuk batalkan input</li>
             </ul>
+          </div>
+
+          {/* Disconnect */}
+          <div className="neo-card p-5">
+            <h3 className="font-heading text-sm font-bold mb-2">🔌 Putuskan Koneksi</h3>
+            <p className="text-xs mb-3" style={{ color: "#666" }}>
+              Koneksi akan diputus. Bot tidak bisa mencatat transaksi sampai dihubungkan ulang.
+            </p>
+            {!showDisconnectConfirm ? (
+              <button
+                onClick={() => setShowDisconnectConfirm(true)}
+                className="neo-btn px-4 py-2 text-sm font-bold flex items-center gap-2"
+                style={{ background: "#f5f5f5" }}
+              >
+                <Unplug size={14} />
+                Putuskan Koneksi
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDisconnect}
+                  disabled={disconnecting}
+                  className="neo-btn px-4 py-2 text-sm font-bold text-white flex items-center gap-2"
+                  style={{ background: "#FF3B30" }}
+                >
+                  {disconnecting ? <Loader2 size={14} className="animate-spin" /> : <Unplug size={14} />}
+                  Ya, Putuskan
+                </button>
+                <button
+                  onClick={() => setShowDisconnectConfirm(false)}
+                  className="neo-btn px-4 py-2 text-sm font-bold"
+                  style={{ background: "#f5f5f5" }}
+                >
+                  Batal
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

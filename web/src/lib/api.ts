@@ -74,6 +74,8 @@ export const user = {
   profile: () => request<Profile>("/api/user/profile"),
   linkTelegram: () =>
     request<LinkTokenResponse>("/api/user/link-telegram", { method: "POST" }),
+  unlinkTelegram: () =>
+    request<Profile>("/api/user/link-telegram", { method: "DELETE" }),
 };
 
 // Transactions

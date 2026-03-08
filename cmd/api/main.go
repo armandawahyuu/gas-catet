@@ -139,6 +139,7 @@ func main() {
 	userGroup.Put("/profile", userHandler.UpdateProfile)
 	userGroup.Put("/password", userHandler.ChangePassword)
 	userGroup.Post("/link-telegram", userHandler.GenerateLinkToken)
+	userGroup.Delete("/link-telegram", userHandler.UnlinkTelegram)
 
 	txGroup := api.Group("/transactions", userHandler.AuthMiddleware)
 	txGroup.Post("/", txHandler.Create)

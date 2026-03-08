@@ -171,6 +171,15 @@ func (s *Service) UpdateProfile(ctx context.Context, userID pgtype.UUID, name, e
 	return toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt), nil
 }
 
+func (s *Service) UnlinkTelegram(ctx context.Context, userID pgtype.UUID) (UserResponse, error) {
+	row, err := s.queries.UnlinkTelegram(ctx, userID)
+	if err != nil {
+		return UserResponse{}, fmt.Errorf("gagal unlink telegram: %w", err)
+	}
+
+	return toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt), nil
+}
+
 func (s *Service) ChangePassword(ctx context.Context, userID pgtype.UUID, currentPassword, newPassword string) error {
 	// Verify current password
 	row, err := s.queries.GetUserByID(ctx, userID)

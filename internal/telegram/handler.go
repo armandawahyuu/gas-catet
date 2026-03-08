@@ -128,6 +128,10 @@ func (h *Handler) handleCommand(chatID, telegramID int64, text string) {
 		h.handleQuickAdd(chatID, telegramID, strings.TrimPrefix(text, "/masuk "), TypeIncome)
 	case text == "/help":
 		h.sendHelp(chatID)
+	case text == "/akun":
+		h.handleAkun(chatID, telegramID)
+	case text == "/diskonek":
+		h.handleDisconnectPrompt(chatID, telegramID)
 	case text == "/batal":
 		session := h.fsm.GetSession(chatID)
 		if session.State != StateIdle {
@@ -170,6 +174,10 @@ func (h *Handler) handleCallback(cb *CallbackQuery) {
 		h.handleConfirmSave(chatID, cb.From.ID)
 	case data == "edit_back":
 		h.handleEditBack(chatID)
+	case data == "confirm_disconnect":
+		h.handleDisconnectConfirm(chatID, cb.From.ID)
+	case data == "cancel_disconnect":
+		h.sendMessage(chatID, "👍 Oke, akun tetap terhubung!")
 	case data == "cancel":
 		h.fsm.ResetSession(chatID)
 		h.sendMessage(chatID, "❌ Dibatalin ya bos. Mau nyatet lagi?")
@@ -591,6 +599,84 @@ func (h *Handler) handleEditBack(chatID int64) {
 	h.sendMainMenu(chatID)
 }
 
+// /akun — show linked account info
+func (h *Handler) handleAkun(chatID, telegramID int64) {
+	ctx := context.Background()
+	userRow, err := h.getUserByTelegramID(ctx, telegramID)
+	if err != nil {
+		h.sendMessage(chatID, "⚠️ Akun Telegram kamu belum terhubung.\n\nKirim /link <token> untuk menghubungkan.")
+		return
+	}
+
+	msg := fmt.Sprintf("👤 *Info Akun GasCatet*\n\n"+
+		"📧 Email: %s\n"+
+		"👤 Nama: %s\n"+
+		"📱 Telegram ID: `%d`\n\n"+
+		"_Mau putuskan koneksi? Ketik /diskonek_",
+		userRow.Email,
+		userRow.Name,
+		telegramID,
+	)
+
+	_ = h.bot.SendMessage(SendMessageRequest{
+		ChatID:    chatID,
+		Text:      msg,
+		ParseMode: "Markdown",
+	})
+}
+
+// /diskonek — prompt user to confirm disconnect
+func (h *Handler) handleDisconnectPrompt(chatID, telegramID int64) {
+	ctx := context.Background()
+	userRow, err := h.getUserByTelegramID(ctx, telegramID)
+	if err != nil {
+		h.sendMessage(chatID, "⚠️ Akun Telegram kamu belum terhubung.")
+		return
+	}
+
+	msg := fmt.Sprintf("⚠️ *Yakin mau putuskan koneksi?*\n\n"+
+		"Akun: %s (%s)\n\n"+
+		"Setelah diputus:\n"+
+		"• Bot tidak bisa catat transaksi\n"+
+		"• Laporan otomatis berhenti\n"+
+		"• Bisa dihubungkan ulang nanti dari web",
+		userRow.Name,
+		userRow.Email,
+	)
+
+	_ = h.bot.SendMessage(SendMessageRequest{
+		ChatID:    chatID,
+		Text:      msg,
+		ParseMode: "Markdown",
+		ReplyMarkup: &ReplyMarkup{
+			InlineKeyboard: [][]InlineKeyboardButton{
+				{
+					{Text: "🔌 Ya, Putuskan", CallbackData: "confirm_disconnect"},
+					{Text: "❌ Batal", CallbackData: "cancel_disconnect"},
+				},
+			},
+		},
+	})
+}
+
+// Handle disconnect confirmation
+func (h *Handler) handleDisconnectConfirm(chatID, telegramID int64) {
+	ctx := context.Background()
+	userRow, err := h.getUserByTelegramID(ctx, telegramID)
+	if err != nil {
+		h.sendMessage(chatID, "⚠️ Akun sudah tidak terhubung.")
+		return
+	}
+
+	_, err = h.userSvc.UnlinkTelegram(ctx, userRow.ID)
+	if err != nil {
+		h.sendMessage(chatID, "⚠️ Gagal memutuskan koneksi. Coba lagi ya bos.")
+		return
+	}
+
+	h.sendMessage(chatID, "✅ Koneksi berhasil diputus.\n\nAkun Telegram kamu sudah tidak terhubung ke GasCatet. Untuk menghubungkan ulang, ambil token baru di web GasCatet.")
+}
+
 func (h *Handler) handleLinkToken(chatID, telegramID int64, token string) {
 	ctx := context.Background()
 	token = strings.TrimSpace(token)
@@ -654,6 +740,8 @@ func (h *Handler) sendHelp(chatID int64) {
 
 🔗 *Akun*
 /link <token> — Hubungkan akun Telegram
+/akun — Info akun yang terhubung
+/diskonek — Putuskan koneksi akun
 /help — Tampilkan bantuan ini
 
 💡 *Tips:*
