@@ -165,7 +165,7 @@ export default function GoalsPage() {
               Target Tabungan
             </h1>
             <p className="text-sm mt-1" style={{ color: "#666" }}>
-              Pantau progres menuju tujuan finansialmu
+              Buat target tabungan dan catat progresnya secara manual
             </p>
           </div>
         </div>
@@ -265,7 +265,7 @@ export default function GoalsPage() {
           <Target size={48} className="mx-auto mb-3" style={{ color: "#CCC" }} />
           <p className="font-heading text-lg font-bold">Belum ada target</p>
           <p className="text-sm mt-1" style={{ color: "#666" }}>
-            Buat target tabungan untuk memulai perjalanan finansialmu
+            Buat target tabungan, lalu tambahkan nominal yang sudah kamu tabung secara manual.
           </p>
         </div>
       ) : (
@@ -385,7 +385,7 @@ export default function GoalsPage() {
                   <div className="mt-3 flex items-center gap-2">
                     <input
                       type="number"
-                      placeholder="Nominal tabungan"
+                      placeholder="Jumlah yang sudah ditabung"
                       value={addAmountValue}
                       onChange={(e) => setAddAmountValue(e.target.value)}
                       className="flex-1 neo-border px-3 py-2 text-sm font-heading focus:outline-none"
@@ -472,6 +472,7 @@ export default function GoalsPage() {
                   onChange={(e) => setFormDeadline(e.target.value)}
                   className="w-full neo-border px-3 py-2 font-heading text-sm focus:outline-none"
                 />
+                <p className="text-xs mt-1" style={{ color: "#999" }}>Tanggal target harus tercapai. Bisa dikosongkan.</p>
               </div>
               <button
                 type="submit"

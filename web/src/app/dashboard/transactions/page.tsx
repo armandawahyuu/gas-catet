@@ -120,7 +120,7 @@ export default function TransactionsPage() {
             style={{ background: "#FFCC00", color: "#121212" }}
           >
             <Download size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" />
-            Export
+            Export CSV Bulan Ini
           </button>
           <button
             onClick={() => {
@@ -236,19 +236,21 @@ export default function TransactionsPage() {
                   {tx.receipt_url ? (
                     <button
                       onClick={() => setViewReceipt(tx.id)}
-                      className="p-1.5 hover:bg-gray-100 transition-colors"
+                      className="p-1.5 hover:bg-gray-100 transition-colors flex items-center gap-1"
                       style={{ color: "#00C781" }}
                       title="Lihat Struk"
                     >
                       <ImageIcon size={14} />
+                      <span className="text-xs font-bold hidden sm:inline">Struk</span>
                     </button>
                   ) : (
                     <label
-                      className="p-1.5 hover:bg-gray-100 transition-colors cursor-pointer"
+                      className="p-1.5 hover:bg-gray-100 transition-colors cursor-pointer flex items-center gap-1"
                       style={{ color: "#999" }}
-                      title="Upload Struk"
+                      title="Upload Struk / Nota"
                     >
                       <Camera size={14} />
+                      <span className="text-xs hidden sm:inline">Struk</span>
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp"

@@ -126,7 +126,7 @@ export default function BudgetsPage() {
               Anggaran
             </h1>
             <p className="text-sm mt-1" style={{ color: "#666" }}>
-              Atur batas pengeluaran per kategori
+              Set batas pengeluaran per kategori — dapat peringatan kalau melebihi
             </p>
           </div>
         </div>
@@ -220,7 +220,8 @@ export default function BudgetsPage() {
           <PiggyBank size={48} className="mx-auto mb-3" style={{ color: "#CCC" }} />
           <p className="font-heading text-lg font-bold">Belum ada anggaran</p>
           <p className="text-sm mt-1" style={{ color: "#666" }}>
-            Tambah anggaran untuk mulai mengontrol pengeluaran
+            Tambah anggaran untuk mulai mengontrol pengeluaran.
+            Kategori bisa ditambah di <strong>Settings → Custom Kategori</strong>.
           </p>
         </div>
       ) : (
@@ -364,6 +365,7 @@ export default function BudgetsPage() {
                     required
                   />
                 </div>
+                <p className="text-xs mt-1" style={{ color: "#999" }}>Batas maksimal pengeluaran untuk kategori ini per bulan</p>
               </div>
               {error && (
                 <p className="text-xs font-bold" style={{ color: "#FF3B30" }}>

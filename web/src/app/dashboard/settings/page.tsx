@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,11 +98,11 @@ export default function SettingsPage() {
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (!confirm("Hapus kategori ini?")) return;
     try {
       setError(null);
       setMessage(null);
       await categoriesApi.delete(id);
+      setDeleteCategoryConfirm(null);
       setMessage("Kategori berhasil dihapus");
       await loadCategories(categoryType);
     } catch (err) {
@@ -159,6 +160,7 @@ export default function SettingsPage() {
                 className="w-full neo-border px-4 py-3 outline-none"
                 style={{ background: "#FAFAFA" }}
               />
+              <p className="text-xs mt-1" style={{ color: "#999" }}>Mengubah email akan mengubah akun login kamu</p>
             </div>
             <button
               type="submit"
@@ -195,7 +197,9 @@ export default function SettingsPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="w-full neo-border px-4 py-3 outline-none"
                 style={{ background: "#FAFAFA" }}
+                minLength={6}
               />
+              <p className="text-xs mt-1" style={{ color: "#999" }}>Minimal 6 karakter</p>
             </div>
             <button
               type="submit"
@@ -214,6 +218,7 @@ export default function SettingsPage() {
           <Tags size={20} strokeWidth={2.5} />
           <h2 className="font-heading text-xl font-bold uppercase">Custom Kategori</h2>
         </div>
+        <p className="text-xs mb-4" style={{ color: "#999" }}>Kategori ini bisa dipakai di Transaksi, Anggaran, dan Berulang</p>
 
         <div className="flex gap-3 mb-5">
           {(["EXPENSE", "INCOME"] as const).map((type) => (
@@ -261,14 +266,33 @@ export default function SettingsPage() {
                   <div className="font-heading font-bold uppercase text-sm">{category.name}</div>
                   <div className="text-xs" style={{ color: "#666" }}>{category.type}</div>
                 </div>
-                <button
-                  onClick={() => handleDeleteCategory(category.id)}
-                  className="w-10 h-10 neo-border flex items-center justify-center hover:opacity-80"
-                  style={{ background: "#FFD6D6" }}
-                  title="Hapus kategori"
-                >
-                  <Trash2 size={16} strokeWidth={2.5} />
-                </button>
+                {deleteCategoryConfirm === category.id ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleDeleteCategory(category.id)}
+                      className="neo-btn px-2 py-1 text-xs text-white"
+                      style={{ background: "#FF3B30" }}
+                    >
+                      Hapus
+                    </button>
+                    <button
+                      onClick={() => setDeleteCategoryConfirm(null)}
+                      className="neo-btn px-2 py-1 text-xs"
+                      style={{ background: "#F0F0F0" }}
+                    >
+                      Batal
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setDeleteCategoryConfirm(category.id)}
+                    className="w-10 h-10 neo-border flex items-center justify-center hover:opacity-80"
+                    style={{ background: "#FFD6D6" }}
+                    title="Hapus kategori"
+                  >
+                    <Trash2 size={16} strokeWidth={2.5} />
+                  </button>
+                )}
               </div>
             ))}
           </div>

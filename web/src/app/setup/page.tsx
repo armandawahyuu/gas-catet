@@ -142,7 +142,7 @@ export default function SetupPage() {
               </h2>
               <p className="mb-6" style={{ color: "#666" }}>
                 Atur saldo awal dompet kamu supaya catatan keuangan langsung
-                akurat dari awal.
+                akurat dari awal. Saldo awal yang tepat = laporan keuangan akurat dari hari pertama.
               </p>
 
               <div className="space-y-4">
@@ -184,7 +184,7 @@ export default function SetupPage() {
                   className="flex-1 neo-border px-4 py-3 font-heading font-bold text-sm uppercase tracking-wider hover:bg-gray-100 transition-colors"
                   style={{ background: "#FFFFFF" }}
                 >
-                  Nanti Aja
+                  Lewati
                 </button>
                 <button
                   onClick={handleSubmit}
@@ -196,7 +196,7 @@ export default function SetupPage() {
                     "Menyimpan..."
                   ) : (
                     <>
-                      Gas Mulai <ArrowRight size={16} strokeWidth={3} />
+                      Simpan & Lanjut <ArrowRight size={16} strokeWidth={3} />
                     </>
                   )}
                 </button>

@@ -165,8 +165,9 @@ export default function DashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-64 flex items-center justify-center text-sm" style={{ color: "#999" }}>
-              Belum ada data bulan ini
+            <div className="h-64 flex flex-col items-center justify-center text-sm" style={{ color: "#999" }}>
+              <p>Belum ada data bulan ini</p>
+              <a href="/dashboard/transactions" className="neo-btn px-4 py-2 mt-3 text-xs font-heading font-bold" style={{ background: "#FFCC00" }}>Catat Transaksi Pertama</a>
             </div>
           )}
         </div>
@@ -223,8 +224,9 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <div className="h-48 flex items-center justify-center text-sm" style={{ color: "#999" }}>
-              Belum ada transaksi
+            <div className="h-48 flex flex-col items-center justify-center text-sm" style={{ color: "#999" }}>
+              <p>Belum ada transaksi</p>
+              <a href="/dashboard/transactions" className="neo-btn px-4 py-2 mt-3 text-xs font-heading font-bold" style={{ background: "#FFCC00" }}>Mulai Catat</a>
             </div>
           )}
         </div>

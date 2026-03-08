@@ -73,7 +73,7 @@ export default function WalletsPage() {
               Dompet
             </h1>
             <p className="text-sm mt-1" style={{ color: "#666" }}>
-              Kelola dompet dan pantau saldo kamu
+              Kelola dompet dan pantau saldo kamu — saldo berubah otomatis saat kamu catat transaksi
             </p>
           </div>
         </div>

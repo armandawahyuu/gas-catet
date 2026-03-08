@@ -150,7 +150,7 @@ export default function RecurringPage() {
               Berulang
             </h1>
             <p className="text-sm mt-1" style={{ color: "#666" }}>
-              Otomatisasi transaksi rutin kamu
+              Transaksi yang otomatis dicatat sesuai jadwal — saldo dompet otomatis berubah saat waktunya tiba
             </p>
           </div>
         </div>
@@ -195,7 +195,8 @@ export default function RecurringPage() {
           <RefreshCw size={48} className="mx-auto mb-3" style={{ color: "#CCC" }} />
           <p className="font-heading text-lg font-bold">Belum ada transaksi berulang</p>
           <p className="text-sm mt-1" style={{ color: "#666" }}>
-            Tambah untuk otomatisasi pengeluaran/pemasukan rutin
+            Cocok untuk tagihan rutin seperti listrik, internet, atau gaji bulanan.
+            Sistem otomatis mencatat dan mengubah saldo dompet sesuai jadwal.
           </p>
         </div>
       ) : (
@@ -252,8 +253,8 @@ export default function RecurringPage() {
                   <div className="flex items-center gap-1 mt-2 justify-end">
                     <button
                       onClick={() => handleToggle(item.id)}
-                      className="p-1.5 hover:bg-gray-100 rounded transition-colors"
-                      title={item.is_active ? "Nonaktifkan" : "Aktifkan"}
+                      className="p-1.5 hover:bg-gray-100 rounded transition-colors group relative"
+                      title={item.is_active ? "Pause — hentikan sementara tanpa menghapus" : "Aktifkan kembali"}
                     >
                       {item.is_active ? (
                         <Pause size={16} style={{ color: "#FFCC00" }} />
@@ -305,6 +306,9 @@ export default function RecurringPage() {
               <h2 className="font-heading text-xl font-bold">
                 Tambah Transaksi Berulang
               </h2>
+              <p className="text-xs mt-1 mb-2" style={{ color: "#666" }}>
+                Transaksi akan otomatis tercatat sesuai frekuensi yang kamu pilih
+              </p>
               <button onClick={() => setShowForm(false)}>
                 <X size={20} strokeWidth={2.5} />
               </button>
@@ -449,6 +453,7 @@ export default function RecurringPage() {
                   className="w-full neo-border px-3 py-2 font-heading text-sm focus:outline-none"
                   required
                 />
+                <p className="text-xs mt-1" style={{ color: "#999" }}>Pencatatan otomatis dimulai dari tanggal ini</p>
               </div>
 
               {error && (

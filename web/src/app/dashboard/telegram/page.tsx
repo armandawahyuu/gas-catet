@@ -62,7 +62,7 @@ export default function TelegramPage() {
           Telegram Bot
         </h1>
         <p className="text-sm mt-1" style={{ color: "#666" }}>
-          Catat pengeluaran langsung dari Telegram
+          Catat pengeluaran lebih cepat lewat chat Telegram — tanpa perlu buka aplikasi
         </p>
       </div>
 
@@ -128,6 +128,8 @@ export default function TelegramPage() {
                   <div className="text-sm">
                     <strong>Menunggu...</strong> Buka Telegram dan tap <strong>Start</strong> di bot.
                     Halaman ini akan otomatis update.
+                    <br />
+                    <span style={{ color: "#999" }}>Telegram tidak terbuka? <a href={`https://t.me/${botUsername}`} target="_blank" rel="noopener noreferrer" className="underline font-bold" style={{ color: "#FF3B30" }}>Klik di sini</a></span>
                   </div>
                 </div>
               )}
@@ -168,9 +170,9 @@ export default function TelegramPage() {
               Cara Pakai Bot
             </h2>
             <div className="space-y-3 text-sm">
-              <CommandRow cmd="/start" desc="Buka menu utama, pilih catat pengeluaran / pemasukan" />
-              <CommandRow cmd="/saldo" desc="Cek ringkasan saldo bulan ini" />
-              <CommandRow cmd="/help" desc="Panduan lengkap penggunaan bot" />
+              <CommandRow cmd="/start" desc="Buka menu utama — pilih catat pengeluaran atau pemasukan lewat chat" />
+              <CommandRow cmd="/saldo" desc="Lihat ringkasan saldo & pengeluaran bulan ini" />
+              <CommandRow cmd="/help" desc="Panduan lengkap semua perintah bot" />
             </div>
           </div>
 
