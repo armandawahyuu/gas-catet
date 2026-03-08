@@ -10,6 +10,7 @@ import (
 	"gas-catet/internal/category"
 	"gas-catet/internal/database"
 	"gas-catet/internal/goal"
+	"gas-catet/internal/payment"
 	"gas-catet/internal/recurring"
 	"gas-catet/internal/telegram"
 	"gas-catet/internal/transaction"
@@ -41,6 +42,7 @@ func main() {
 	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
 	geminiBaseURL := os.Getenv("GEMINI_BASE_URL")
 	geminiModel := os.Getenv("GEMINI_MODEL")
+	mayarWebhookSecret := os.Getenv("MAYAR_WEBHOOK_SECRET")
 
 	port := os.Getenv("APP_PORT")
 	if port == "" {
@@ -235,6 +237,11 @@ func main() {
 			"username": telegramBotUsername,
 		})
 	})
+
+	// Mayar payment webhook (public — verified by HMAC signature)
+	paymentAdapter := payment.NewUserQueriesAdapter(userQueries)
+	paymentHandler := payment.NewHandler(mayarWebhookSecret, paymentAdapter)
+	app.Post("/api/webhook/mayar", paymentHandler.Webhook)
 
 	// Telegram webhook (public - verified by Telegram secret)
 	if tgHandler != nil {

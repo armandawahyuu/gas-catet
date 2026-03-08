@@ -14,7 +14,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, password_hash, name)
 VALUES ($1, $2, $3)
-RETURNING id, email, name, telegram_id, created_at
+RETURNING id, email, name, telegram_id, created_at, plan, subscription_expires_at
 `
 
 type CreateUserParams struct {
@@ -24,11 +24,13 @@ type CreateUserParams struct {
 }
 
 type CreateUserRow struct {
-	ID         pgtype.UUID        `json:"id"`
-	Email      string             `json:"email"`
-	Name       string             `json:"name"`
-	TelegramID pgtype.Int8        `json:"telegram_id"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ID                    pgtype.UUID        `json:"id"`
+	Email                 string             `json:"email"`
+	Name                  string             `json:"name"`
+	TelegramID            pgtype.Int8        `json:"telegram_id"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Plan                  string             `json:"plan"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
@@ -40,23 +42,49 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.Name,
 		&i.TelegramID,
 		&i.CreatedAt,
+		&i.Plan,
+		&i.SubscriptionExpiresAt,
 	)
 	return i, err
 }
 
+const downgradePlan = `-- name: DowngradePlan :exec
+UPDATE users
+SET plan = 'free', subscription_expires_at = NULL
+WHERE id = $1
+`
+
+func (q *Queries) DowngradePlan(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, downgradePlan, id)
+	return err
+}
+
+const downgradePlanByEmail = `-- name: DowngradePlanByEmail :exec
+UPDATE users
+SET plan = 'free', subscription_expires_at = NULL
+WHERE email = $1
+`
+
+func (q *Queries) DowngradePlanByEmail(ctx context.Context, email string) error {
+	_, err := q.db.Exec(ctx, downgradePlanByEmail, email)
+	return err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, name, telegram_id, created_at
+SELECT id, email, password_hash, name, telegram_id, created_at, plan, subscription_expires_at
 FROM users
 WHERE email = $1
 `
 
 type GetUserByEmailRow struct {
-	ID           pgtype.UUID        `json:"id"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
-	Name         string             `json:"name"`
-	TelegramID   pgtype.Int8        `json:"telegram_id"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ID                    pgtype.UUID        `json:"id"`
+	Email                 string             `json:"email"`
+	PasswordHash          string             `json:"password_hash"`
+	Name                  string             `json:"name"`
+	TelegramID            pgtype.Int8        `json:"telegram_id"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Plan                  string             `json:"plan"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
@@ -69,22 +97,26 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 		&i.Name,
 		&i.TelegramID,
 		&i.CreatedAt,
+		&i.Plan,
+		&i.SubscriptionExpiresAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, telegram_id, created_at
+SELECT id, email, name, telegram_id, created_at, plan, subscription_expires_at
 FROM users
 WHERE id = $1
 `
 
 type GetUserByIDRow struct {
-	ID         pgtype.UUID        `json:"id"`
-	Email      string             `json:"email"`
-	Name       string             `json:"name"`
-	TelegramID pgtype.Int8        `json:"telegram_id"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ID                    pgtype.UUID        `json:"id"`
+	Email                 string             `json:"email"`
+	Name                  string             `json:"name"`
+	TelegramID            pgtype.Int8        `json:"telegram_id"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Plan                  string             `json:"plan"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error) {
@@ -96,22 +128,57 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDR
 		&i.Name,
 		&i.TelegramID,
 		&i.CreatedAt,
+		&i.Plan,
+		&i.SubscriptionExpiresAt,
+	)
+	return i, err
+}
+
+const getUserByMayarCustomerID = `-- name: GetUserByMayarCustomerID :one
+SELECT id, email, name, telegram_id, created_at, plan, subscription_expires_at
+FROM users
+WHERE mayar_customer_id = $1
+`
+
+type GetUserByMayarCustomerIDRow struct {
+	ID                    pgtype.UUID        `json:"id"`
+	Email                 string             `json:"email"`
+	Name                  string             `json:"name"`
+	TelegramID            pgtype.Int8        `json:"telegram_id"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Plan                  string             `json:"plan"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
+}
+
+func (q *Queries) GetUserByMayarCustomerID(ctx context.Context, mayarCustomerID pgtype.Text) (GetUserByMayarCustomerIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserByMayarCustomerID, mayarCustomerID)
+	var i GetUserByMayarCustomerIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.TelegramID,
+		&i.CreatedAt,
+		&i.Plan,
+		&i.SubscriptionExpiresAt,
 	)
 	return i, err
 }
 
 const getUserByTelegramID = `-- name: GetUserByTelegramID :one
-SELECT id, email, name, telegram_id, created_at
+SELECT id, email, name, telegram_id, created_at, plan, subscription_expires_at
 FROM users
 WHERE telegram_id = $1
 `
 
 type GetUserByTelegramIDRow struct {
-	ID         pgtype.UUID        `json:"id"`
-	Email      string             `json:"email"`
-	Name       string             `json:"name"`
-	TelegramID pgtype.Int8        `json:"telegram_id"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ID                    pgtype.UUID        `json:"id"`
+	Email                 string             `json:"email"`
+	Name                  string             `json:"name"`
+	TelegramID            pgtype.Int8        `json:"telegram_id"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Plan                  string             `json:"plan"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
 }
 
 func (q *Queries) GetUserByTelegramID(ctx context.Context, telegramID pgtype.Int8) (GetUserByTelegramIDRow, error) {
@@ -123,6 +190,8 @@ func (q *Queries) GetUserByTelegramID(ctx context.Context, telegramID pgtype.Int
 		&i.Name,
 		&i.TelegramID,
 		&i.CreatedAt,
+		&i.Plan,
+		&i.SubscriptionExpiresAt,
 	)
 	return i, err
 }
@@ -131,7 +200,7 @@ const linkTelegram = `-- name: LinkTelegram :one
 UPDATE users
 SET telegram_id = $2
 WHERE id = $1
-RETURNING id, email, name, telegram_id, created_at
+RETURNING id, email, name, telegram_id, created_at, plan, subscription_expires_at
 `
 
 type LinkTelegramParams struct {
@@ -140,11 +209,13 @@ type LinkTelegramParams struct {
 }
 
 type LinkTelegramRow struct {
-	ID         pgtype.UUID        `json:"id"`
-	Email      string             `json:"email"`
-	Name       string             `json:"name"`
-	TelegramID pgtype.Int8        `json:"telegram_id"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ID                    pgtype.UUID        `json:"id"`
+	Email                 string             `json:"email"`
+	Name                  string             `json:"name"`
+	TelegramID            pgtype.Int8        `json:"telegram_id"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Plan                  string             `json:"plan"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
 }
 
 func (q *Queries) LinkTelegram(ctx context.Context, arg LinkTelegramParams) (LinkTelegramRow, error) {
@@ -156,22 +227,26 @@ func (q *Queries) LinkTelegram(ctx context.Context, arg LinkTelegramParams) (Lin
 		&i.Name,
 		&i.TelegramID,
 		&i.CreatedAt,
+		&i.Plan,
+		&i.SubscriptionExpiresAt,
 	)
 	return i, err
 }
 
 const listLinkedTelegramUsers = `-- name: ListLinkedTelegramUsers :many
-SELECT id, email, name, telegram_id, created_at
+SELECT id, email, name, telegram_id, created_at, plan, subscription_expires_at
 FROM users
 WHERE telegram_id IS NOT NULL
 `
 
 type ListLinkedTelegramUsersRow struct {
-	ID         pgtype.UUID        `json:"id"`
-	Email      string             `json:"email"`
-	Name       string             `json:"name"`
-	TelegramID pgtype.Int8        `json:"telegram_id"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ID                    pgtype.UUID        `json:"id"`
+	Email                 string             `json:"email"`
+	Name                  string             `json:"name"`
+	TelegramID            pgtype.Int8        `json:"telegram_id"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Plan                  string             `json:"plan"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
 }
 
 func (q *Queries) ListLinkedTelegramUsers(ctx context.Context) ([]ListLinkedTelegramUsersRow, error) {
@@ -189,6 +264,8 @@ func (q *Queries) ListLinkedTelegramUsers(ctx context.Context) ([]ListLinkedTele
 			&i.Name,
 			&i.TelegramID,
 			&i.CreatedAt,
+			&i.Plan,
+			&i.SubscriptionExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -204,15 +281,17 @@ const unlinkTelegram = `-- name: UnlinkTelegram :one
 UPDATE users
 SET telegram_id = NULL
 WHERE id = $1
-RETURNING id, email, name, telegram_id, created_at
+RETURNING id, email, name, telegram_id, created_at, plan, subscription_expires_at
 `
 
 type UnlinkTelegramRow struct {
-	ID         pgtype.UUID        `json:"id"`
-	Email      string             `json:"email"`
-	Name       string             `json:"name"`
-	TelegramID pgtype.Int8        `json:"telegram_id"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ID                    pgtype.UUID        `json:"id"`
+	Email                 string             `json:"email"`
+	Name                  string             `json:"name"`
+	TelegramID            pgtype.Int8        `json:"telegram_id"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Plan                  string             `json:"plan"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
 }
 
 func (q *Queries) UnlinkTelegram(ctx context.Context, id pgtype.UUID) (UnlinkTelegramRow, error) {
@@ -224,6 +303,8 @@ func (q *Queries) UnlinkTelegram(ctx context.Context, id pgtype.UUID) (UnlinkTel
 		&i.Name,
 		&i.TelegramID,
 		&i.CreatedAt,
+		&i.Plan,
+		&i.SubscriptionExpiresAt,
 	)
 	return i, err
 }
@@ -248,7 +329,7 @@ const updateProfile = `-- name: UpdateProfile :one
 UPDATE users
 SET name = $2, email = $3
 WHERE id = $1
-RETURNING id, email, name, telegram_id, created_at
+RETURNING id, email, name, telegram_id, created_at, plan, subscription_expires_at
 `
 
 type UpdateProfileParams struct {
@@ -258,11 +339,13 @@ type UpdateProfileParams struct {
 }
 
 type UpdateProfileRow struct {
-	ID         pgtype.UUID        `json:"id"`
-	Email      string             `json:"email"`
-	Name       string             `json:"name"`
-	TelegramID pgtype.Int8        `json:"telegram_id"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ID                    pgtype.UUID        `json:"id"`
+	Email                 string             `json:"email"`
+	Name                  string             `json:"name"`
+	TelegramID            pgtype.Int8        `json:"telegram_id"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Plan                  string             `json:"plan"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
 }
 
 func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (UpdateProfileRow, error) {
@@ -274,6 +357,42 @@ func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (U
 		&i.Name,
 		&i.TelegramID,
 		&i.CreatedAt,
+		&i.Plan,
+		&i.SubscriptionExpiresAt,
 	)
 	return i, err
+}
+
+const upgradePlan = `-- name: UpgradePlan :exec
+UPDATE users
+SET plan = 'pro', mayar_customer_id = $2, subscription_expires_at = $3
+WHERE id = $1
+`
+
+type UpgradePlanParams struct {
+	ID                    pgtype.UUID        `json:"id"`
+	MayarCustomerID       pgtype.Text        `json:"mayar_customer_id"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
+}
+
+func (q *Queries) UpgradePlan(ctx context.Context, arg UpgradePlanParams) error {
+	_, err := q.db.Exec(ctx, upgradePlan, arg.ID, arg.MayarCustomerID, arg.SubscriptionExpiresAt)
+	return err
+}
+
+const upgradePlanByEmail = `-- name: UpgradePlanByEmail :exec
+UPDATE users
+SET plan = 'pro', mayar_customer_id = $2, subscription_expires_at = $3
+WHERE email = $1
+`
+
+type UpgradePlanByEmailParams struct {
+	Email                 string             `json:"email"`
+	MayarCustomerID       pgtype.Text        `json:"mayar_customer_id"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
+}
+
+func (q *Queries) UpgradePlanByEmail(ctx context.Context, arg UpgradePlanByEmailParams) error {
+	_, err := q.db.Exec(ctx, upgradePlanByEmail, arg.Email, arg.MayarCustomerID, arg.SubscriptionExpiresAt)
+	return err
 }

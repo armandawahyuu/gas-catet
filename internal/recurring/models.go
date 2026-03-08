@@ -82,12 +82,15 @@ type Transfer struct {
 }
 
 type User struct {
-	ID           pgtype.UUID        `json:"id"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
-	TelegramID   pgtype.Int8        `json:"telegram_id"`
-	Name         string             `json:"name"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ID                    pgtype.UUID        `json:"id"`
+	Email                 string             `json:"email"`
+	PasswordHash          string             `json:"password_hash"`
+	TelegramID            pgtype.Int8        `json:"telegram_id"`
+	Name                  string             `json:"name"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Plan                  string             `json:"plan"`
+	MayarCustomerID       pgtype.Text        `json:"mayar_customer_id"`
+	SubscriptionExpiresAt pgtype.Timestamptz `json:"subscription_expires_at"`
 }
 
 type Wallet struct {

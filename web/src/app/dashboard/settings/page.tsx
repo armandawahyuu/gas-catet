@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { categories as categoriesApi, userSettings, type CategoryItem2 } from "@/lib/api";
-import { Settings, User, Lock, Tags, Plus, Trash2 } from "lucide-react";
+import { Settings, User, Lock, Tags, Plus, Trash2, Crown, Coffee } from "lucide-react";
 
 type CategoryType = "EXPENSE" | "INCOME";
 
@@ -134,6 +134,55 @@ export default function SettingsPage() {
           {error}
         </div>
       )}
+
+      {/* Plan Card */}
+      <section
+        className="neo-border neo-shadow p-6"
+        style={{ background: profile?.plan === "pro" ? "#FFFBF5" : "#FFFFFF", borderColor: profile?.plan === "pro" ? "#FF6B00" : undefined }}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 neo-border flex items-center justify-center"
+              style={{ background: profile?.plan === "pro" ? "#FF6B00" : "#E5E5E5" }}
+            >
+              {profile?.plan === "pro" ? (
+                <Crown size={20} strokeWidth={3} color="#fff" />
+              ) : (
+                <Coffee size={20} strokeWidth={3} />
+              )}
+            </div>
+            <div>
+              <div className="font-heading text-lg font-bold uppercase">
+                Paket {profile?.plan === "pro" ? "Pro" : "Gratis"}
+              </div>
+              {profile?.plan === "pro" ? (
+                <p className="text-sm" style={{ color: "#666" }}>
+                  Semua fitur aktif ✨
+                  {profile.subscription_expires_at && (
+                    <span> · Berlaku sampai {new Date(profile.subscription_expires_at).toLocaleDateString("id-ID")}</span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-sm" style={{ color: "#666" }}>
+                  Upgrade ke Pro buat unlock semua fitur!
+                </p>
+              )}
+            </div>
+          </div>
+          {profile?.plan !== "pro" && (
+            <a
+              href="https://dna-indonesia.myr.id"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="neo-btn px-5 py-2.5 text-sm font-bold text-white"
+              style={{ background: "#FF3B30" }}
+            >
+              Upgrade Pro ☕
+            </a>
+          )}
+        </div>
+      </section>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <section className="neo-border neo-shadow p-6" style={{ background: "#FFFFFF" }}>

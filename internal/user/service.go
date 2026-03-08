@@ -38,11 +38,13 @@ type AuthResponse struct {
 }
 
 type UserResponse struct {
-	ID         string `json:"id"`
-	Email      string `json:"email"`
-	Name       string `json:"name"`
-	TelegramID *int64 `json:"telegram_id,omitempty"`
-	CreatedAt  string `json:"created_at"`
+	ID                    string  `json:"id"`
+	Email                 string  `json:"email"`
+	Name                  string  `json:"name"`
+	TelegramID            *int64  `json:"telegram_id,omitempty"`
+	Plan                  string  `json:"plan"`
+	SubscriptionExpiresAt *string `json:"subscription_expires_at,omitempty"`
+	CreatedAt             string  `json:"created_at"`
 }
 
 func NewService(queries *Queries, jwtSecret string) *Service {
@@ -82,7 +84,7 @@ func (s *Service) Register(ctx context.Context, email, password, name string) (A
 
 	return AuthResponse{
 		Token: token,
-		User:  toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt),
+		User:  toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt, row.Plan, row.SubscriptionExpiresAt),
 	}, nil
 }
 
@@ -106,7 +108,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (AuthRespon
 
 	return AuthResponse{
 		Token: token,
-		User:  toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt),
+		User:  toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt, row.Plan, row.SubscriptionExpiresAt),
 	}, nil
 }
 
@@ -119,7 +121,7 @@ func (s *Service) GetProfile(ctx context.Context, userID pgtype.UUID) (UserRespo
 		return UserResponse{}, fmt.Errorf("gagal query user: %w", err)
 	}
 
-	return toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt), nil
+	return toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt, row.Plan, row.SubscriptionExpiresAt), nil
 }
 
 func (s *Service) GenerateLinkToken(userID pgtype.UUID) string {
@@ -152,7 +154,7 @@ func (s *Service) RedeemLinkToken(ctx context.Context, token string, telegramID 
 		return UserResponse{}, fmt.Errorf("gagal link telegram: %w", err)
 	}
 
-	return toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt), nil
+	return toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt, row.Plan, row.SubscriptionExpiresAt), nil
 }
 
 func (s *Service) UpdateProfile(ctx context.Context, userID pgtype.UUID, name, email string) (UserResponse, error) {
@@ -168,7 +170,7 @@ func (s *Service) UpdateProfile(ctx context.Context, userID pgtype.UUID, name, e
 		return UserResponse{}, fmt.Errorf("gagal update profil: %w", err)
 	}
 
-	return toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt), nil
+	return toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt, row.Plan, row.SubscriptionExpiresAt), nil
 }
 
 func (s *Service) UnlinkTelegram(ctx context.Context, userID pgtype.UUID) (UserResponse, error) {
@@ -177,7 +179,7 @@ func (s *Service) UnlinkTelegram(ctx context.Context, userID pgtype.UUID) (UserR
 		return UserResponse{}, fmt.Errorf("gagal unlink telegram: %w", err)
 	}
 
-	return toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt), nil
+	return toUserResponse(row.ID, row.Email, row.Name, row.TelegramID, row.CreatedAt, row.Plan, row.SubscriptionExpiresAt), nil
 }
 
 func (s *Service) ChangePassword(ctx context.Context, userID pgtype.UUID, currentPassword, newPassword string) error {
@@ -270,15 +272,20 @@ func stringToUUID(s string) (pgtype.UUID, error) {
 	return u, nil
 }
 
-func toUserResponse(id pgtype.UUID, email, name string, telegramID pgtype.Int8, createdAt pgtype.Timestamptz) UserResponse {
+func toUserResponse(id pgtype.UUID, email, name string, telegramID pgtype.Int8, createdAt pgtype.Timestamptz, plan string, subExpires pgtype.Timestamptz) UserResponse {
 	resp := UserResponse{
 		ID:        uuidToString(id),
 		Email:     email,
 		Name:      name,
+		Plan:      plan,
 		CreatedAt: createdAt.Time.Format(time.RFC3339),
 	}
 	if telegramID.Valid {
 		resp.TelegramID = &telegramID.Int64
+	}
+	if subExpires.Valid {
+		s := subExpires.Time.Format(time.RFC3339)
+		resp.SubscriptionExpiresAt = &s
 	}
 	return resp
 }
