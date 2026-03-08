@@ -14,6 +14,9 @@ vendor/
 # Environment
 .env
 
+# Uploads
+uploads/
+
 # Node / Next.js
 web/node_modules/
 web/.next/

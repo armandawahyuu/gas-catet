@@ -1,16 +1,16 @@
 -- name: CreateTransaction :one
-INSERT INTO transactions (user_id, amount, transaction_type, description, category, transaction_date, wallet_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, user_id, amount, transaction_type, description, category, transaction_date, wallet_id, created_at;
+INSERT INTO transactions (user_id, amount, transaction_type, description, category, transaction_date, wallet_id, receipt_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, user_id, amount, transaction_type, description, category, transaction_date, wallet_id, receipt_url, created_at;
 
 -- name: GetTransactionByID :one
-SELECT t.id, t.user_id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.wallet_id, t.created_at, COALESCE(w.name, '') AS wallet_name
+SELECT t.id, t.user_id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.wallet_id, t.receipt_url, t.created_at, COALESCE(w.name, '') AS wallet_name
 FROM transactions t
 LEFT JOIN wallets w ON t.wallet_id = w.id
 WHERE t.id = $1 AND t.user_id = $2;
 
 -- name: ListTransactionsByUser :many
-SELECT t.id, t.user_id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.wallet_id, t.created_at, COALESCE(w.name, '') AS wallet_name
+SELECT t.id, t.user_id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.wallet_id, t.receipt_url, t.created_at, COALESCE(w.name, '') AS wallet_name
 FROM transactions t
 LEFT JOIN wallets w ON t.wallet_id = w.id
 WHERE t.user_id = $1
@@ -18,7 +18,7 @@ ORDER BY t.transaction_date DESC, t.created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: ListTransactionsByUserAndType :many
-SELECT t.id, t.user_id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.wallet_id, t.created_at, COALESCE(w.name, '') AS wallet_name
+SELECT t.id, t.user_id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.wallet_id, t.receipt_url, t.created_at, COALESCE(w.name, '') AS wallet_name
 FROM transactions t
 LEFT JOIN wallets w ON t.wallet_id = w.id
 WHERE t.user_id = $1 AND t.transaction_type = $2
@@ -27,9 +27,9 @@ LIMIT $3 OFFSET $4;
 
 -- name: UpdateTransaction :one
 UPDATE transactions
-SET amount = $3, transaction_type = $4, description = $5, category = $6, transaction_date = $7, wallet_id = $8
+SET amount = $3, transaction_type = $4, description = $5, category = $6, transaction_date = $7, wallet_id = $8, receipt_url = $9
 WHERE id = $1 AND user_id = $2
-RETURNING id, user_id, amount, transaction_type, description, category, transaction_date, wallet_id, created_at;
+RETURNING id, user_id, amount, transaction_type, description, category, transaction_date, wallet_id, receipt_url, created_at;
 
 -- name: DeleteTransaction :exec
 DELETE FROM transactions
@@ -53,7 +53,7 @@ WHERE t.user_id = $1
 ORDER BY t.transaction_date ASC, t.created_at ASC;
 
 -- name: SearchTransactions :many
-SELECT t.id, t.user_id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.wallet_id, t.created_at, COALESCE(w.name, '') AS wallet_name
+SELECT t.id, t.user_id, t.amount, t.transaction_type, t.description, t.category, t.transaction_date, t.wallet_id, t.receipt_url, t.created_at, COALESCE(w.name, '') AS wallet_name
 FROM transactions t
 LEFT JOIN wallets w ON t.wallet_id = w.id
 WHERE t.user_id = $1
@@ -72,3 +72,8 @@ WHERE user_id = $1
   AND transaction_date >= $2
   AND transaction_date < $3
 GROUP BY transaction_type;
+
+-- name: UpdateReceiptURL :exec
+UPDATE transactions
+SET receipt_url = $3
+WHERE id = $1 AND user_id = $2;

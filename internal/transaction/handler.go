@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -279,4 +283,101 @@ func (h *Handler) ExportCSV(c *fiber.Ctx) error {
 
 	w.Flush()
 	return nil
+}
+
+func (h *Handler) UploadReceipt(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	txID, err := stringToUUID(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID transaksi tidak valid"})
+	}
+
+	// Verify transaction belongs to user
+	_, err = h.service.GetByID(c.Context(), userID, txID)
+	if err != nil {
+		if err == ErrTransactionNotFound {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "transaksi tidak ditemukan"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal verifikasi transaksi"})
+	}
+
+	file, err := c.FormFile("receipt")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "file receipt wajib diupload"})
+	}
+
+	// Max 5MB
+	if file.Size > 5*1024*1024 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ukuran file maksimal 5MB"})
+	}
+
+	// Validate file type
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
+	if !allowedExts[ext] {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "format file harus JPG, PNG, atau WebP"})
+	}
+
+	// Create uploads directory
+	uploadDir := "./uploads/receipts"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal buat direktori upload"})
+	}
+
+	// Generate unique filename
+	filename := uuid.New().String() + ext
+	savePath := filepath.Join(uploadDir, filename)
+
+	if err := c.SaveFile(file, savePath); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal simpan file"})
+	}
+
+	// Save URL to database
+	receiptURL := "/uploads/receipts/" + filename
+	if err := h.service.UpdateReceiptURL(c.Context(), userID, txID, receiptURL); err != nil {
+		// Clean up file on DB error
+		os.Remove(savePath)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal simpan url receipt"})
+	}
+
+	return c.JSON(fiber.Map{
+		"message":     "receipt berhasil diupload",
+		"receipt_url": receiptURL,
+	})
+}
+
+func (h *Handler) DeleteReceipt(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(pgtype.UUID)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	txID, err := stringToUUID(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID transaksi tidak valid"})
+	}
+
+	tx, err := h.service.GetByID(c.Context(), userID, txID)
+	if err != nil {
+		if err == ErrTransactionNotFound {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "transaksi tidak ditemukan"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal ambil transaksi"})
+	}
+
+	// Delete file from disk
+	if tx.ReceiptURL != "" {
+		os.Remove("." + tx.ReceiptURL)
+	}
+
+	// Clear in database
+	if err := h.service.UpdateReceiptURL(c.Context(), userID, txID, ""); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal hapus receipt"})
+	}
+
+	return c.JSON(fiber.Map{"message": "receipt berhasil dihapus"})
 }

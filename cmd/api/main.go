@@ -102,7 +102,8 @@ func main() {
 	}
 
 	app := fiber.New(fiber.Config{
-		AppName: "GasCatet API",
+		AppName:   "GasCatet API",
+		BodyLimit: 10 * 1024 * 1024, // 10MB
 	})
 
 	app.Use(logger.New())
@@ -112,6 +113,9 @@ func main() {
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok", "app": "GasCatet"})
 	})
+
+	// Serve uploaded files
+	app.Static("/uploads", "./uploads")
 
 	api := app.Group("/api")
 
@@ -134,6 +138,8 @@ func main() {
 	txGroup.Get("/:id", txHandler.GetByID)
 	txGroup.Put("/:id", txHandler.Update)
 	txGroup.Delete("/:id", txHandler.Delete)
+	txGroup.Post("/:id/receipt", txHandler.UploadReceipt)
+	txGroup.Delete("/:id/receipt", txHandler.DeleteReceipt)
 
 	catGroup := api.Group("/categories", userHandler.AuthMiddleware)
 	catGroup.Get("/", catHandler.List)

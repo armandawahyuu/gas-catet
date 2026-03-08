@@ -20,6 +20,8 @@ import {
   Filter,
   Download,
   Search,
+  Camera,
+  Image as ImageIcon,
 } from "lucide-react";
 
 type TxType = "" | "INCOME" | "EXPENSE";
@@ -32,6 +34,8 @@ export default function TransactionsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [viewReceipt, setViewReceipt] = useState<string | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState<string | null>(null);
 
   const loadTx = useCallback(async () => {
     try {
@@ -63,6 +67,29 @@ export default function TransactionsPage() {
       console.error(e);
     }
   };
+
+  const handleReceiptUpload = async (id: string, file: File) => {
+    setUploadingReceipt(id);
+    try {
+      await txApi.uploadReceipt(id, file);
+      loadTx();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUploadingReceipt(null);
+    }
+  };
+
+  const handleReceiptDelete = async (id: string) => {
+    try {
+      await txApi.deleteReceipt(id);
+      loadTx();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
   return (
     <div>
@@ -206,6 +233,35 @@ export default function TransactionsPage() {
                   </div>
                 </div>
                 <div className="flex gap-0.5 flex-shrink-0 -mt-0.5">
+                  {tx.receipt_url ? (
+                    <button
+                      onClick={() => setViewReceipt(tx.id)}
+                      className="p-1.5 hover:bg-gray-100 transition-colors"
+                      style={{ color: "#00C781" }}
+                      title="Lihat Struk"
+                    >
+                      <ImageIcon size={14} />
+                    </button>
+                  ) : (
+                    <label
+                      className="p-1.5 hover:bg-gray-100 transition-colors cursor-pointer"
+                      style={{ color: "#999" }}
+                      title="Upload Struk"
+                    >
+                      <Camera size={14} />
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleReceiptUpload(tx.id, file);
+                          e.target.value = "";
+                        }}
+                        disabled={uploadingReceipt === tx.id}
+                      />
+                    </label>
+                  )}
                   <button
                     onClick={() => {
                       setEditTx(tx);
@@ -276,6 +332,59 @@ export default function TransactionsPage() {
           </div>
         </div>
       )}
+
+      {/* Receipt viewer */}
+      {viewReceipt && (() => {
+        const tx = txList.find((t) => t.id === viewReceipt);
+        if (!tx || !tx.receipt_url) return null;
+        return (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="neo-card p-4 w-full max-w-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-heading text-lg font-bold">Struk / Nota</h3>
+                <button onClick={() => setViewReceipt(null)} className="p-1 hover:opacity-70">
+                  <X size={20} />
+                </button>
+              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`${apiBase}${tx.receipt_url}`}
+                alt="Struk transaksi"
+                className="w-full neo-border"
+                style={{ maxHeight: "60vh", objectFit: "contain" }}
+              />
+              <div className="flex gap-2 mt-3">
+                <label className="neo-btn flex-1 py-2 text-sm text-center cursor-pointer" style={{ background: "#FFCC00" }}>
+                  📷 Ganti Foto
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleReceiptUpload(tx.id, file);
+                        setViewReceipt(null);
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <button
+                  onClick={() => {
+                    handleReceiptDelete(tx.id);
+                    setViewReceipt(null);
+                  }}
+                  className="neo-btn flex-1 py-2 text-sm text-white"
+                  style={{ background: "#FF3B30" }}
+                >
+                  🗑️ Hapus Foto
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

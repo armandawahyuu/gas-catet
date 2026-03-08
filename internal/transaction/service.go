@@ -28,6 +28,7 @@ type TransactionResponse struct {
 	Category        string `json:"category"`
 	WalletID        string `json:"wallet_id"`
 	WalletName      string `json:"wallet_name"`
+	ReceiptURL      string `json:"receipt_url"`
 	TransactionDate string `json:"transaction_date"`
 	CreatedAt       string `json:"created_at"`
 }
@@ -48,6 +49,7 @@ type UpdateRequest struct {
 	Category        string `json:"category"`
 	WalletID        string `json:"wallet_id"`
 	TransactionDate string `json:"transaction_date"`
+	ReceiptURL      string `json:"receipt_url"`
 }
 
 type ListResponse struct {
@@ -103,6 +105,7 @@ func (s *Service) Create(ctx context.Context, userID pgtype.UUID, req CreateRequ
 		Category:        category,
 		TransactionDate: pgtype.Timestamptz{Time: txDate, Valid: true},
 		WalletID:        walletUUID,
+		ReceiptUrl:      pgtype.Text{},
 	})
 	if err != nil {
 		return TransactionResponse{}, fmt.Errorf("gagal buat transaksi: %w", err)
@@ -207,6 +210,7 @@ func (s *Service) Update(ctx context.Context, userID, txID pgtype.UUID, req Upda
 		Category:        updateCategory,
 		TransactionDate: pgtype.Timestamptz{Time: txDate, Valid: true},
 		WalletID:        walletUUID,
+		ReceiptUrl:      pgtype.Text{String: req.ReceiptURL, Valid: req.ReceiptURL != ""},
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -300,8 +304,17 @@ func (s *Service) CreateFromRecurring(ctx context.Context, userID pgtype.UUID, a
 		Category:        category,
 		TransactionDate: pgtype.Timestamptz{Time: txDate, Valid: true},
 		WalletID:        walletID,
+		ReceiptUrl:      pgtype.Text{},
 	})
 	return err
+}
+
+func (s *Service) UpdateReceiptURL(ctx context.Context, userID, txID pgtype.UUID, url string) error {
+	return s.queries.UpdateReceiptURL(ctx, UpdateReceiptURLParams{
+		ID:         txID,
+		UserID:     userID,
+		ReceiptUrl: pgtype.Text{String: url, Valid: url != ""},
+	})
 }
 
 func (s *Service) Search(ctx context.Context, userID pgtype.UUID, query string, limit, offset int32) (ListResponse, error) {
@@ -378,6 +391,10 @@ func createRowToResponse(tx CreateTransactionRow) TransactionResponse {
 	if tx.Description.Valid {
 		desc = tx.Description.String
 	}
+	receipt := ""
+	if tx.ReceiptUrl.Valid {
+		receipt = tx.ReceiptUrl.String
+	}
 	return TransactionResponse{
 		ID:              uuidToString(tx.ID),
 		Amount:          tx.Amount,
@@ -385,6 +402,7 @@ func createRowToResponse(tx CreateTransactionRow) TransactionResponse {
 		Description:     desc,
 		Category:        tx.Category,
 		WalletID:        uuidToString(tx.WalletID),
+		ReceiptURL:      receipt,
 		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
 		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
 	}
@@ -395,6 +413,10 @@ func getRowToResponse(tx GetTransactionByIDRow) TransactionResponse {
 	if tx.Description.Valid {
 		desc = tx.Description.String
 	}
+	receipt := ""
+	if tx.ReceiptUrl.Valid {
+		receipt = tx.ReceiptUrl.String
+	}
 	return TransactionResponse{
 		ID:              uuidToString(tx.ID),
 		Amount:          tx.Amount,
@@ -403,6 +425,7 @@ func getRowToResponse(tx GetTransactionByIDRow) TransactionResponse {
 		Category:        tx.Category,
 		WalletID:        uuidToString(tx.WalletID),
 		WalletName:      tx.WalletName,
+		ReceiptURL:      receipt,
 		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
 		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
 	}
@@ -413,6 +436,10 @@ func updateRowToResponse(tx UpdateTransactionRow) TransactionResponse {
 	if tx.Description.Valid {
 		desc = tx.Description.String
 	}
+	receipt := ""
+	if tx.ReceiptUrl.Valid {
+		receipt = tx.ReceiptUrl.String
+	}
 	return TransactionResponse{
 		ID:              uuidToString(tx.ID),
 		Amount:          tx.Amount,
@@ -420,6 +447,7 @@ func updateRowToResponse(tx UpdateTransactionRow) TransactionResponse {
 		Description:     desc,
 		Category:        tx.Category,
 		WalletID:        uuidToString(tx.WalletID),
+		ReceiptURL:      receipt,
 		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
 		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
 	}
@@ -430,6 +458,10 @@ func listRowToResponse(tx ListTransactionsByUserRow) TransactionResponse {
 	if tx.Description.Valid {
 		desc = tx.Description.String
 	}
+	receipt := ""
+	if tx.ReceiptUrl.Valid {
+		receipt = tx.ReceiptUrl.String
+	}
 	return TransactionResponse{
 		ID:              uuidToString(tx.ID),
 		Amount:          tx.Amount,
@@ -438,6 +470,7 @@ func listRowToResponse(tx ListTransactionsByUserRow) TransactionResponse {
 		Category:        tx.Category,
 		WalletID:        uuidToString(tx.WalletID),
 		WalletName:      tx.WalletName,
+		ReceiptURL:      receipt,
 		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
 		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
 	}
@@ -448,6 +481,10 @@ func listTypeRowToResponse(tx ListTransactionsByUserAndTypeRow) TransactionRespo
 	if tx.Description.Valid {
 		desc = tx.Description.String
 	}
+	receipt := ""
+	if tx.ReceiptUrl.Valid {
+		receipt = tx.ReceiptUrl.String
+	}
 	return TransactionResponse{
 		ID:              uuidToString(tx.ID),
 		Amount:          tx.Amount,
@@ -456,6 +493,7 @@ func listTypeRowToResponse(tx ListTransactionsByUserAndTypeRow) TransactionRespo
 		Category:        tx.Category,
 		WalletID:        uuidToString(tx.WalletID),
 		WalletName:      tx.WalletName,
+		ReceiptURL:      receipt,
 		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
 		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
 	}
@@ -466,6 +504,10 @@ func searchRowToResponse(tx SearchTransactionsRow) TransactionResponse {
 	if tx.Description.Valid {
 		desc = tx.Description.String
 	}
+	receipt := ""
+	if tx.ReceiptUrl.Valid {
+		receipt = tx.ReceiptUrl.String
+	}
 	return TransactionResponse{
 		ID:              uuidToString(tx.ID),
 		Amount:          tx.Amount,
@@ -474,6 +516,7 @@ func searchRowToResponse(tx SearchTransactionsRow) TransactionResponse {
 		Category:        tx.Category,
 		WalletID:        uuidToString(tx.WalletID),
 		WalletName:      tx.WalletName,
+		ReceiptURL:      receipt,
 		TransactionDate: tx.TransactionDate.Time.Format("2006-01-02"),
 		CreatedAt:       tx.CreatedAt.Time.Format(time.RFC3339),
 	}

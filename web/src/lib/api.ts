@@ -86,6 +86,7 @@ export interface Transaction {
   transaction_date: string;
   wallet_id: string;
   wallet_name: string;
+  receipt_url: string;
   created_at: string;
 }
 
@@ -155,6 +156,22 @@ export const transactions = {
       return res.blob();
     });
   },
+  uploadReceipt: (id: string, file: File) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const formData = new FormData();
+    formData.append("receipt", file);
+    return fetch(`${API_BASE}/api/transactions/${id}/receipt`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    }).then(async (res) => {
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Upload gagal");
+      return body as { message: string; receipt_url: string };
+    });
+  },
+  deleteReceipt: (id: string) =>
+    request<{ message: string }>(`/api/transactions/${id}/receipt`, { method: "DELETE" }),
 };
 
 // Analytics

@@ -58,6 +58,7 @@ type Transaction struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	Category        string             `json:"category"`
 	WalletID        pgtype.UUID        `json:"wallet_id"`
+	ReceiptUrl      pgtype.Text        `json:"receipt_url"`
 }
 
 type Transfer struct {
