@@ -20,6 +20,10 @@ import {
   Clock,
   ChevronUp,
   Flame,
+  Coffee,
+  Crown,
+  Check,
+  X,
 } from "lucide-react";
 
 /* ── Scroll reveal hook ─────────────────────────────── */
@@ -536,7 +540,7 @@ export default function Home() {
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { icon: Clock, color: "#FF3B30", title: "Cepet Banget", desc: "5 detik buat catat dari Telegram. Gak perlu buka app, gak perlu login ulang." },
-              { icon: Star, color: "#FFCC00", title: "Gratis Saat Ini", desc: "Lagi masa early access — semua fitur bisa kamu pake gratis. Buruan cobain!" },
+              { icon: Star, color: "#FFCC00", title: "Murah Banget", desc: "Fitur gratis udah lengkap. Mau full power? Cuma seharga kopi 35rb/bulan." },
               { icon: TrendingUp, color: "#00C781", title: "Bikin Kamu Melek Duit", desc: "Grafik & analitik yang bikin kamu sadar kemana aja duit pergi tiap bulan." },
             ].map((item, i) => (
               <Reveal key={i} delay={i * 150}>
@@ -558,6 +562,144 @@ export default function Home() {
               </Reveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ── */}
+      <section className="border-t-3 border-base" style={{ background: "#FAFAFA" }}>
+        <div className="max-w-5xl mx-auto px-4 py-16 md:py-24">
+          <Reveal>
+            <div className="text-center mb-4">
+              <h2 className="font-heading text-3xl md:text-5xl font-black">
+                Harga<span style={{ color: "#FF3B30" }}>nya</span>?
+              </h2>
+              <p className="text-base mt-3 max-w-md mx-auto" style={{ color: "#666" }}>
+                Lebih murah dari kopi yang kamu beli tiap hari ☕
+              </p>
+            </div>
+          </Reveal>
+
+          <div className="grid md:grid-cols-2 gap-6 mt-12 max-w-3xl mx-auto">
+            {/* Free Plan */}
+            <Reveal delay={0}>
+              <div className="neo-card p-8 h-full flex flex-col">
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Zap size={20} strokeWidth={3} style={{ color: "#00C781" }} />
+                    <span className="font-heading text-lg font-bold">Gratis</span>
+                  </div>
+                  <div className="font-heading text-4xl font-black mt-2">
+                    Rp0
+                    <span className="text-sm font-medium" style={{ color: "#999" }}> /selamanya</span>
+                  </div>
+                  <p className="text-sm mt-2" style={{ color: "#666" }}>
+                    Buat yang baru mulai melek keuangan
+                  </p>
+                </div>
+                <div className="space-y-3 flex-1">
+                  {[
+                    [true, "2 dompet"],
+                    [true, "Catat transaksi unlimited"],
+                    [true, "Bot Telegram"],
+                    [true, "Laporan harian otomatis"],
+                    [true, "Analitik dasar"],
+                    [true, "AI Roast 3x/hari"],
+                    [false, "Scan Struk AI"],
+                    [false, "Anggaran & template"],
+                    [false, "Target tabungan"],
+                    [false, "Transaksi berulang"],
+                    [false, "Export CSV"],
+                  ].map(([ok, text], i) => (
+                    <div key={i} className="flex items-center gap-2.5 text-sm">
+                      {ok ? (
+                        <Check size={16} strokeWidth={3} style={{ color: "#00C781" }} />
+                      ) : (
+                        <X size={16} strokeWidth={3} style={{ color: "#ccc" }} />
+                      )}
+                      <span style={{ color: ok ? "#333" : "#bbb" }}>{text as string}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link
+                  href="/register"
+                  className="neo-btn w-full text-center py-3 text-sm font-bold mt-8 inline-block"
+                  style={{ background: "#E5E5E5", color: "#333" }}
+                >
+                  Mulai Gratis
+                </Link>
+              </div>
+            </Reveal>
+
+            {/* Pro Plan */}
+            <Reveal delay={150}>
+              <div className="relative h-full flex flex-col">
+                <div
+                  className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 neo-border text-xs font-heading font-black uppercase tracking-wider z-10"
+                  style={{ background: "#FFCC00" }}
+                >
+                  <span className="flex items-center gap-1">
+                    <Crown size={12} strokeWidth={3} /> Paling Worth It
+                  </span>
+                </div>
+                <div
+                  className="neo-card p-8 h-full flex flex-col"
+                  style={{ borderColor: "#FF3B30", borderWidth: "3px", background: "#FFFBF5" }}
+                >
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Coffee size={20} strokeWidth={3} style={{ color: "#FF3B30" }} />
+                      <span className="font-heading text-lg font-bold" style={{ color: "#FF3B30" }}>Pro</span>
+                    </div>
+                    <div className="font-heading text-4xl font-black mt-2">
+                      Rp35<span className="text-xl">.000</span>
+                      <span className="text-sm font-medium" style={{ color: "#999" }}> /bulan</span>
+                    </div>
+                    <p className="text-sm mt-2" style={{ color: "#666" }}>
+                      Traktir gua kopi aja sebulan ☕
+                    </p>
+                  </div>
+                  <div className="space-y-3 flex-1">
+                    {[
+                      "Unlimited dompet + transfer",
+                      "Catat transaksi unlimited",
+                      "Bot Telegram full command",
+                      "Laporan harian otomatis",
+                      "Analitik lengkap + trend",
+                      "AI Roast unlimited 🔥",
+                      "Scan Struk AI unlimited",
+                      "Anggaran + template (50/30/20, 6 Jars)",
+                      "Target tabungan",
+                      "Transaksi berulang otomatis",
+                      "Export CSV",
+                    ].map((text, i) => (
+                      <div key={i} className="flex items-center gap-2.5 text-sm">
+                        <Check size={16} strokeWidth={3} style={{ color: "#00C781" }} />
+                        <span style={{ color: "#333" }}>{text}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Link
+                    href="/register"
+                    className="neo-btn w-full text-center py-3 text-sm font-bold mt-8 inline-block text-white"
+                    style={{ background: "#FF3B30" }}
+                  >
+                    Upgrade ke Pro ☕
+                  </Link>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+
+          <Reveal delay={300}>
+            <div className="text-center mt-10">
+              <div
+                className="inline-block neo-border px-5 py-3 text-sm"
+                style={{ background: "#F0FFF4" }}
+              >
+                🎉 <strong>Early access sekarang</strong> — semua fitur Pro <strong>GRATIS</strong> buat kamu yang daftar duluan!
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
