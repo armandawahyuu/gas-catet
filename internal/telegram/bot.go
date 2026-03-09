@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type BotClient struct {
@@ -19,7 +20,7 @@ func NewBotClient(token string) *BotClient {
 	return &BotClient{
 		token:   token,
 		baseURL: fmt.Sprintf("https://api.telegram.org/bot%s", token),
-		client:  &http.Client{},
+		client:  &http.Client{Timeout: 30 * time.Second},
 	}
 }
 

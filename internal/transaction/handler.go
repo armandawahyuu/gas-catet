@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,6 +15,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+// sanitizeCSV prevents CSV injection by prefixing dangerous characters
+func sanitizeCSV(s string) string {
+	if len(s) > 0 && (s[0] == '=' || s[0] == '+' || s[0] == '-' || s[0] == '@' || s[0] == '\t' || s[0] == '\r') {
+		return "'" + s
+	}
+	return s
+}
 
 // WalletBalanceUpdater abstracts wallet balance operations to avoid circular imports
 type WalletBalanceUpdater interface {
@@ -64,7 +73,9 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 			if req.TransactionType == "EXPENSE" {
 				delta = -delta
 			}
-			_ = h.walUpdater.UpdateBalance(c.Context(), walUUID, delta)
+			if err := h.walUpdater.UpdateBalance(c.Context(), walUUID, delta); err != nil {
+				log.Printf("[WARN] Wallet balance update failed: %v", err)
+			}
 		}
 	}
 
@@ -103,6 +114,12 @@ func (h *Handler) List(c *fiber.Ctx) error {
 	search := c.Query("q")
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	offset, _ := strconv.Atoi(c.Query("offset", "0"))
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
 
 	if search != "" {
 		resp, err := h.service.Search(c.Context(), userID, search, int32(limit), int32(offset))
@@ -312,11 +329,11 @@ func (h *Handler) ExportCSV(c *fiber.Ctx) error {
 			amount = -amount
 		}
 		_ = w.Write([]string{
-			r.TransactionDate.Time.Format("2006-01-02"),
-			tipe,
-			r.Category,
-			desc,
-			r.WalletName,
+			sanitizeCSV(r.TransactionDate.Time.Format("2006-01-02")),
+			sanitizeCSV(tipe),
+			sanitizeCSV(r.Category),
+			sanitizeCSV(desc),
+			sanitizeCSV(r.WalletName),
 			strconv.FormatInt(amount, 10),
 		})
 	}

@@ -155,6 +155,8 @@ func main() {
 		c.Set("X-XSS-Protection", "1; mode=block")
 		c.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		c.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		c.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:")
+		c.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		return c.Next()
 	})
 

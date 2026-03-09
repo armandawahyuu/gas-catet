@@ -19,8 +19,8 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (password.length < 6) {
-      setError("Password minimal 6 karakter");
+    if (password.length < 8) {
+      setError("Password minimal 8 karakter");
       return;
     }
     setLoading(true);
@@ -107,7 +107,7 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="neo-input w-full px-4 py-3 pr-12 text-base"
-                  placeholder="Min. 6 karakter"
+                  placeholder="Min. 8 karakter"
                   required
                 />
                 <button
