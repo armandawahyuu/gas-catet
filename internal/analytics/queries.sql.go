@@ -211,6 +211,24 @@ func (q *Queries) GetMonthlyTrend(ctx context.Context, arg GetMonthlyTrendParams
 	return items, nil
 }
 
+const getRoastCache = `-- name: GetRoastCache :one
+SELECT roast_text FROM roast_cache
+WHERE user_id = $1 AND year = $2 AND month = $3
+`
+
+type GetRoastCacheParams struct {
+	UserID pgtype.UUID `json:"user_id"`
+	Year   int32       `json:"year"`
+	Month  int32       `json:"month"`
+}
+
+func (q *Queries) GetRoastCache(ctx context.Context, arg GetRoastCacheParams) (string, error) {
+	row := q.db.QueryRow(ctx, getRoastCache, arg.UserID, arg.Year, arg.Month)
+	var roast_text string
+	err := row.Scan(&roast_text)
+	return roast_text, err
+}
+
 const getTopDescriptions = `-- name: GetTopDescriptions :many
 SELECT
   description,
@@ -279,5 +297,29 @@ type InsertFeatureUsageParams struct {
 
 func (q *Queries) InsertFeatureUsage(ctx context.Context, arg InsertFeatureUsageParams) error {
 	_, err := q.db.Exec(ctx, insertFeatureUsage, arg.UserID, arg.Feature)
+	return err
+}
+
+const upsertRoastCache = `-- name: UpsertRoastCache :exec
+INSERT INTO roast_cache (user_id, year, month, roast_text)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (user_id, year, month)
+DO UPDATE SET roast_text = EXCLUDED.roast_text, created_at = NOW()
+`
+
+type UpsertRoastCacheParams struct {
+	UserID    pgtype.UUID `json:"user_id"`
+	Year      int32       `json:"year"`
+	Month     int32       `json:"month"`
+	RoastText string      `json:"roast_text"`
+}
+
+func (q *Queries) UpsertRoastCache(ctx context.Context, arg UpsertRoastCacheParams) error {
+	_, err := q.db.Exec(ctx, upsertRoastCache,
+		arg.UserID,
+		arg.Year,
+		arg.Month,
+		arg.RoastText,
+	)
 	return err
 }

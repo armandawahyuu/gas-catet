@@ -267,11 +267,12 @@ export const analytics = {
     if (month) q.set("month", String(month));
     return request<CategoryBreakdownResponse>(`/api/analytics/categories?${q}`);
   },
-  roast: (year?: number, month?: number) => {
+  roast: (year?: number, month?: number, refresh?: boolean) => {
     const q = new URLSearchParams();
     if (year) q.set("year", String(year));
     if (month) q.set("month", String(month));
-    return request<{ roast: string }>(`/api/analytics/roast?${q}`);
+    if (refresh) q.set("refresh", "true");
+    return request<{ roast: string; cached?: boolean }>(`/api/analytics/roast?${q}`);
   },
 };
 

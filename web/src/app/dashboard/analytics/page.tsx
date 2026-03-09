@@ -30,12 +30,12 @@ function RoastCard({ year, month }: { year: number; month: number }) {
   const [error, setError] = useState("");
   const [upgradeRequired, setUpgradeRequired] = useState(false);
 
-  const fetchRoast = useCallback(() => {
+  const fetchRoast = useCallback((refresh = false) => {
     setLoading(true);
     setError("");
     setUpgradeRequired(false);
     analytics
-      .roast(year, month)
+      .roast(year, month, refresh)
       .then((r) => setRoast(r.roast))
       .catch((err) => {
         if (err?.message?.toLowerCase().includes("upgrade")) {
@@ -64,7 +64,7 @@ function RoastCard({ year, month }: { year: number; month: number }) {
           </h2>
         </div>
         <button
-          onClick={fetchRoast}
+          onClick={() => fetchRoast(true)}
           disabled={loading}
           className="neo-btn px-3 py-1.5 text-xs font-bold flex items-center gap-1"
           style={{ background: "#FF6B00", color: "#fff" }}

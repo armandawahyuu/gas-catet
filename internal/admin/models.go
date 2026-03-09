@@ -95,6 +95,15 @@ type RecurringTransaction struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
+type RoastCache struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Year      int32              `json:"year"`
+	Month     int32              `json:"month"`
+	RoastText string             `json:"roast_text"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Transaction struct {
 	ID              pgtype.UUID        `json:"id"`
 	UserID          pgtype.UUID        `json:"user_id"`

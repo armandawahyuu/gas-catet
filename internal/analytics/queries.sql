@@ -66,3 +66,13 @@ WHERE user_id = $1 AND feature = $2 AND used_at = CURRENT_DATE;
 
 -- name: InsertFeatureUsage :exec
 INSERT INTO feature_usage (user_id, feature) VALUES ($1, $2);
+
+-- name: GetRoastCache :one
+SELECT roast_text FROM roast_cache
+WHERE user_id = $1 AND year = $2 AND month = $3;
+
+-- name: UpsertRoastCache :exec
+INSERT INTO roast_cache (user_id, year, month, roast_text)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (user_id, year, month)
+DO UPDATE SET roast_text = EXCLUDED.roast_text, created_at = NOW();

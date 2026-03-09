@@ -106,16 +106,34 @@ func (h *Handler) Categories(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// GET /api/analytics/roast?year=2026&month=3
+// GET /api/analytics/roast?year=2026&month=3&refresh=true
 func (h *Handler) Roast(c *fiber.Ctx) error {
 	if h.roastGen == nil {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "fitur roast belum aktif"})
 	}
 
 	userID := c.Locals("user_id").(pgtype.UUID)
+	refresh := c.Query("refresh") == "true"
 
-	// Rate limit: free users max 3x/day
+	// Rate limit: free users max 3x/day (only count on refresh/new generation)
 	plan := plangating.CheckPlan(c.Context(), h.pool, userID)
+
+	name := "Bos"
+	year, month := parseYearMonth(c)
+
+	// Check cache first (unless refresh requested)
+	if !refresh {
+		cached, err := h.service.queries.GetRoastCache(c.Context(), GetRoastCacheParams{
+			UserID: userID,
+			Year:   int32(year),
+			Month:  int32(month),
+		})
+		if err == nil && cached != "" {
+			return c.JSON(fiber.Map{"roast": cached, "cached": true})
+		}
+	}
+
+	// Rate limit check (only when actually generating)
 	if plan == plangating.PlanFree {
 		count, err := h.service.queries.CountFeatureUsageToday(c.Context(), CountFeatureUsageTodayParams{
 			UserID:  userID,
@@ -129,9 +147,6 @@ func (h *Handler) Roast(c *fiber.Ctx) error {
 			})
 		}
 	}
-
-	name := "Bos"
-	year, month := parseYearMonth(c)
 
 	// Gather financial data
 	var dataLines []string
@@ -192,6 +207,14 @@ Data keuangan:
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "AI lagi males nge-roast, coba lagi nanti"})
 	}
+
+	// Save to cache
+	_ = h.service.queries.UpsertRoastCache(c.Context(), UpsertRoastCacheParams{
+		UserID:    userID,
+		Year:      int32(year),
+		Month:     int32(month),
+		RoastText: roastText,
+	})
 
 	// Track usage for rate limiting
 	_ = h.service.queries.InsertFeatureUsage(c.Context(), InsertFeatureUsageParams{
