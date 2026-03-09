@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 type BotClient struct {
@@ -32,10 +33,16 @@ func (b *BotClient) AnswerCallbackQuery(req AnswerCallbackQueryRequest) error {
 
 // GetFileURL returns the download URL for a Telegram file by file_id.
 func (b *BotClient) GetFileURL(fileID string) (string, error) {
+	payload := map[string]string{"file_id": fileID}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("marshal error: %w", err)
+	}
+
 	resp, err := b.client.Post(
 		fmt.Sprintf("%s/getFile", b.baseURL),
 		"application/json",
-		bytes.NewReader([]byte(fmt.Sprintf(`{"file_id":"%s"}`, fileID))),
+		bytes.NewReader(body),
 	)
 	if err != nil {
 		return "", err
@@ -58,8 +65,14 @@ func (b *BotClient) GetFileURL(fileID string) (string, error) {
 	return fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", b.token, result.Result.FilePath), nil
 }
 
-// DownloadFile downloads a file from a URL and returns the bytes.
+// DownloadFile downloads a file from a Telegram API URL and returns the bytes.
 func (b *BotClient) DownloadFile(url string) ([]byte, error) {
+	// Only allow downloads from Telegram's file API to prevent SSRF
+	allowedPrefix := fmt.Sprintf("https://api.telegram.org/file/bot%s/", b.token)
+	if !strings.HasPrefix(url, allowedPrefix) {
+		return nil, fmt.Errorf("invalid file URL: must be from Telegram API")
+	}
+
 	resp, err := b.client.Get(url)
 	if err != nil {
 		return nil, err

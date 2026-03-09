@@ -66,22 +66,28 @@ type membershipObj struct {
 
 // Webhook handles incoming Mayar webhook events
 func (h *Handler) Webhook(c *fiber.Ctx) error {
-	// Verify HMAC signature
+	// Reject if webhook secret is not configured
+	if h.webhookSecret == "" {
+		log.Printf("[MAYAR WEBHOOK] Webhook secret not configured, rejecting request")
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "webhook not configured"})
+	}
+
+	// Verify HMAC signature — always required
 	signature := c.Get("X-Callback-Signature")
 	if signature == "" {
 		signature = c.Get("x-callback-signature")
 	}
+	if signature == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing signature"})
+	}
 
 	body := c.Body()
-
-	if h.webhookSecret != "" && signature != "" {
-		mac := hmac.New(sha256.New, []byte(h.webhookSecret))
-		mac.Write(body)
-		expected := hex.EncodeToString(mac.Sum(nil))
-		if !hmac.Equal([]byte(signature), []byte(expected)) {
-			log.Printf("[MAYAR WEBHOOK] Invalid signature: got %s, expected %s", signature, expected)
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid signature"})
-		}
+	mac := hmac.New(sha256.New, []byte(h.webhookSecret))
+	mac.Write(body)
+	expected := hex.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(signature), []byte(expected)) {
+		log.Printf("[MAYAR WEBHOOK] Invalid signature: got %s, expected %s", signature, expected)
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid signature"})
 	}
 
 	var payload webhookPayload

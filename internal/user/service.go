@@ -48,10 +48,26 @@ type UserResponse struct {
 }
 
 func NewService(queries *Queries, jwtSecret string) *Service {
-	return &Service{
+	s := &Service{
 		queries:    queries,
 		jwtSecret:  []byte(jwtSecret),
 		linkTokens: make(map[string]linkTokenData),
+	}
+	// Periodically clean up expired link tokens to prevent memory leaks
+	go s.cleanupExpiredTokens()
+	return s
+}
+
+func (s *Service) cleanupExpiredTokens() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now()
+		for token, data := range s.linkTokens {
+			if now.After(data.ExpiresAt) {
+				delete(s.linkTokens, token)
+			}
+		}
 	}
 }
 

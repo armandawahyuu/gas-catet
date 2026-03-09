@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"log"
 	"os"
 	"strings"
 
@@ -13,13 +14,18 @@ type Handler struct {
 }
 
 func NewHandler(service *Service) *Handler {
-	emails := map[string]bool{
-		"wahyuarmanda2@gmail.com": true,
-	}
-	if extra := os.Getenv("ADMIN_EMAILS"); extra != "" {
-		for _, e := range strings.Split(extra, ",") {
-			emails[strings.TrimSpace(e)] = true
+	emails := make(map[string]bool)
+	adminList := os.Getenv("ADMIN_EMAILS")
+	if adminList != "" {
+		for _, e := range strings.Split(adminList, ",") {
+			trimmed := strings.TrimSpace(e)
+			if trimmed != "" {
+				emails[trimmed] = true
+			}
 		}
+	}
+	if len(emails) == 0 {
+		log.Println("[WARN] ADMIN_EMAILS not set — no admin access available")
 	}
 	return &Handler{service: service, adminEmails: emails}
 }

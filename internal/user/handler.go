@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"net/mail"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -46,9 +47,30 @@ func (h *Handler) Register(c *fiber.Ctx) error {
 		})
 	}
 
+	// Validate email format
+	if _, err := mail.ParseAddress(req.Email); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "format email tidak valid",
+		})
+	}
+
+	// Trim and validate name length
+	req.Name = strings.TrimSpace(req.Name)
+	if len(req.Name) > 100 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "nama maksimal 100 karakter",
+		})
+	}
+
 	if len(req.Password) < 8 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "password minimal 8 karakter",
+		})
+	}
+
+	if len(req.Password) > 72 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "password maksimal 72 karakter",
 		})
 	}
 
@@ -161,6 +183,16 @@ func (h *Handler) UpdateProfile(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "nama dan email wajib diisi"})
 	}
 
+	// Validate email format
+	if _, err := mail.ParseAddress(req.Email); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "format email tidak valid"})
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	if len(req.Name) > 100 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "nama maksimal 100 karakter"})
+	}
+
 	resp, err := h.service.UpdateProfile(c.Context(), userID, req.Name, req.Email)
 	if err != nil {
 		if err == ErrEmailAlreadyExists {
@@ -192,6 +224,10 @@ func (h *Handler) ChangePassword(c *fiber.Ctx) error {
 
 	if len(req.NewPassword) < 8 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "password baru minimal 8 karakter"})
+	}
+
+	if len(req.NewPassword) > 72 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "password baru maksimal 72 karakter"})
 	}
 
 	err := h.service.ChangePassword(c.Context(), userID, req.CurrentPassword, req.NewPassword)

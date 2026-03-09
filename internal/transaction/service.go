@@ -94,7 +94,11 @@ func (s *Service) Create(ctx context.Context, userID pgtype.UUID, req CreateRequ
 
 	var walletUUID pgtype.UUID
 	if req.WalletID != "" {
-		walletUUID, _ = stringToUUID(req.WalletID)
+		var uuidErr error
+		walletUUID, uuidErr = stringToUUID(req.WalletID)
+		if uuidErr != nil {
+			return TransactionResponse{}, fmt.Errorf("wallet ID tidak valid: %w", uuidErr)
+		}
 	}
 
 	row, err := s.queries.CreateTransaction(ctx, CreateTransactionParams{
@@ -198,7 +202,11 @@ func (s *Service) Update(ctx context.Context, userID, txID pgtype.UUID, req Upda
 
 	var walletUUID pgtype.UUID
 	if req.WalletID != "" {
-		walletUUID, _ = stringToUUID(req.WalletID)
+		var uuidErr error
+		walletUUID, uuidErr = stringToUUID(req.WalletID)
+		if uuidErr != nil {
+			return TransactionResponse{}, fmt.Errorf("wallet ID tidak valid: %w", uuidErr)
+		}
 	}
 
 	row, err := s.queries.UpdateTransaction(ctx, UpdateTransactionParams{

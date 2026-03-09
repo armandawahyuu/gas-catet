@@ -44,8 +44,26 @@ type FSM struct {
 }
 
 func NewFSM() *FSM {
-	return &FSM{
+	f := &FSM{
 		sessions: make(map[int64]*UserSession),
+	}
+	// Periodically clean expired sessions to prevent memory leaks
+	go f.cleanupExpiredSessions()
+	return f
+}
+
+func (f *FSM) cleanupExpiredSessions() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		f.mu.Lock()
+		now := time.Now()
+		for chatID, session := range f.sessions {
+			if now.Sub(session.UpdatedAt) > 15*time.Minute {
+				delete(f.sessions, chatID)
+			}
+		}
+		f.mu.Unlock()
 	}
 }
 

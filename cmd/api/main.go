@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
+	"time"
 
 	"gas-catet/internal/admin"
 	"gas-catet/internal/analytics"
@@ -19,6 +21,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -133,24 +136,93 @@ func main() {
 	}
 
 	app := fiber.New(fiber.Config{
-		AppName:   "GasCatet API",
-		BodyLimit: 10 * 1024 * 1024, // 10MB
+		AppName:      "GasCatet API",
+		BodyLimit:    10 * 1024 * 1024, // 10MB
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+		// Do not expose server header
+		ServerHeader: "",
 	})
 
 	app.Use(logger.New())
 	app.Use(recover.New())
-	app.Use(cors.New())
+
+	// Security headers
+	app.Use(func(c *fiber.Ctx) error {
+		c.Set("X-Content-Type-Options", "nosniff")
+		c.Set("X-Frame-Options", "DENY")
+		c.Set("X-XSS-Protection", "1; mode=block")
+		c.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		return c.Next()
+	})
+
+	// CORS — restrict to allowed origins instead of wildcard
+	allowedOrigins := os.Getenv("CORS_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "http://localhost:3001,http://localhost:3000"
+	}
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     allowedOrigins,
+		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
+		AllowCredentials: false,
+		MaxAge:           3600,
+	}))
+
+	// Global rate limiter: 100 requests per minute per IP
+	app.Use(limiter.New(limiter.Config{
+		Max:        100,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			if ip := c.Get("X-Real-IP"); ip != "" {
+				return ip
+			}
+			if xff := c.Get("X-Forwarded-For"); xff != "" {
+				return strings.SplitN(xff, ",", 2)[0]
+			}
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error": "terlalu banyak request, coba lagi nanti",
+			})
+		},
+	}))
 
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok", "app": "GasCatet"})
 	})
 
-	// Serve uploaded files
-	app.Static("/uploads", "./uploads")
+	// Serve uploaded files (browse disabled)
+	app.Static("/uploads", "./uploads", fiber.Static{
+		Browse: false,
+	})
 
 	api := app.Group("/api")
 
-	auth := api.Group("/auth")
+	// Stricter rate limit on auth routes: 10 attempts per minute to prevent brute force
+	authLimiter := limiter.New(limiter.Config{
+		Max:        10,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			if ip := c.Get("X-Real-IP"); ip != "" {
+				return "auth:" + ip
+			}
+			if xff := c.Get("X-Forwarded-For"); xff != "" {
+				return "auth:" + strings.SplitN(xff, ",", 2)[0]
+			}
+			return "auth:" + c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error": "terlalu banyak percobaan login, tunggu 1 menit",
+			})
+		},
+	})
+
+	auth := api.Group("/auth", authLimiter)
 	auth.Post("/register", userHandler.Register)
 	auth.Post("/login", userHandler.Login)
 
@@ -243,9 +315,18 @@ func main() {
 	paymentHandler := payment.NewHandler(mayarWebhookSecret, paymentAdapter)
 	app.Post("/api/webhook/mayar", paymentHandler.Webhook)
 
-	// Telegram webhook (public - verified by Telegram secret)
+	// Telegram webhook (verified by secret token in header)
+	telegramWebhookSecret := os.Getenv("TELEGRAM_WEBHOOK_SECRET")
 	if tgHandler != nil {
-		app.Post("/webhook/telegram", tgHandler.Webhook)
+		app.Post("/webhook/telegram", func(c *fiber.Ctx) error {
+			// Verify Telegram secret token if configured
+			if telegramWebhookSecret != "" {
+				if c.Get("X-Telegram-Bot-Api-Secret-Token") != telegramWebhookSecret {
+					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "invalid secret"})
+				}
+			}
+			return tgHandler.Webhook(c)
+		})
 	}
 
 	log.Printf("GasCatet running on :%s", port)

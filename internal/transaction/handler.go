@@ -355,11 +355,22 @@ func (h *Handler) UploadReceipt(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ukuran file maksimal 5MB"})
 	}
 
-	// Validate file type
+	// Validate file type by extension
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
 	if !allowedExts[ext] {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "format file harus JPG, PNG, atau WebP"})
+	}
+
+	// Validate content-type header
+	contentType := file.Header.Get("Content-Type")
+	allowedMIME := map[string]bool{
+		"image/jpeg": true,
+		"image/png":  true,
+		"image/webp": true,
+	}
+	if !allowedMIME[contentType] {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "tipe file tidak diizinkan"})
 	}
 
 	// Create uploads directory
@@ -368,9 +379,16 @@ func (h *Handler) UploadReceipt(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal buat direktori upload"})
 	}
 
-	// Generate unique filename
+	// Generate unique filename (prevent path traversal via original filename)
 	filename := uuid.New().String() + ext
 	savePath := filepath.Join(uploadDir, filename)
+
+	// Verify resolved path is within upload directory
+	absUploadDir, _ := filepath.Abs(uploadDir)
+	absSavePath, _ := filepath.Abs(savePath)
+	if !strings.HasPrefix(absSavePath, absUploadDir) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "path tidak valid"})
+	}
 
 	if err := c.SaveFile(file, savePath); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal simpan file"})
@@ -409,9 +427,14 @@ func (h *Handler) DeleteReceipt(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal ambil transaksi"})
 	}
 
-	// Delete file from disk
+	// Delete file from disk (verify path is within uploads directory)
 	if tx.ReceiptURL != "" {
-		os.Remove("." + tx.ReceiptURL)
+		cleanPath := filepath.Clean("." + tx.ReceiptURL)
+		absPath, _ := filepath.Abs(cleanPath)
+		absUploadDir, _ := filepath.Abs("./uploads/receipts")
+		if strings.HasPrefix(absPath, absUploadDir) {
+			os.Remove(cleanPath)
+		}
 	}
 
 	// Clear in database
