@@ -299,7 +299,7 @@ export default function SettingsPage() {
           />
           <button
             type="submit"
-            disabled={savingCategory}
+            disabled={savingCategory || !newCategory.trim()}
             className="neo-border neo-shadow px-5 py-3 font-heading text-sm font-bold uppercase flex items-center justify-center gap-2 disabled:opacity-50"
             style={{ background: "#FFCC00" }}
           >

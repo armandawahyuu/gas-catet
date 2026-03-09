@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const { year, month } = getCurrentMonth();
     Promise.all([
       analytics.summary(year, month),
@@ -38,13 +39,19 @@ export default function DashboardPage() {
       transactions.today(),
     ])
       .then(([s, t, d, td]) => {
+        if (cancelled) return;
         setSummary(s);
         setRecentTx(t.transactions || []);
         setDailyData(d.days || []);
         setTodayData(td);
       })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (!cancelled) console.error(err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   if (loading) {
