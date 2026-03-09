@@ -54,7 +54,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"error":            err.Error(),
 				"upgrade_required": true,
-				"upgrade_url":      "https://dna-indonesia.myr.id/m/gascatet-pro",
+				"upgrade_url":      "/dashboard/upgrade",
 			})
 		default:
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal buat dompet"})

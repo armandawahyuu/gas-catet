@@ -125,7 +125,7 @@ func (h *Handler) Roast(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"error":            fmt.Sprintf("AI Roast gratis %dx/hari. Upgrade Pro untuk unlimited!", plangating.MaxFreeRoastPerDay),
 				"upgrade_required": true,
-				"upgrade_url":      "https://dna-indonesia.myr.id/m/gascatet-pro",
+				"upgrade_url":      "/dashboard/upgrade",
 			})
 		}
 	}

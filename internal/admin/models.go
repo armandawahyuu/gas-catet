@@ -58,6 +58,21 @@ type PageView struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
+type PaymentOrder struct {
+	ID              pgtype.UUID        `json:"id"`
+	UserID          pgtype.UUID        `json:"user_id"`
+	TripayReference pgtype.Text        `json:"tripay_reference"`
+	MerchantRef     string             `json:"merchant_ref"`
+	Method          string             `json:"method"`
+	Amount          int32              `json:"amount"`
+	Status          string             `json:"status"`
+	CheckoutUrl     pgtype.Text        `json:"checkout_url"`
+	PayCode         pgtype.Text        `json:"pay_code"`
+	ExpiredAt       pgtype.Timestamptz `json:"expired_at"`
+	PaidAt          pgtype.Timestamptz `json:"paid_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
 type RecurringTransaction struct {
 	ID              pgtype.UUID        `json:"id"`
 	UserID          pgtype.UUID        `json:"user_id"`

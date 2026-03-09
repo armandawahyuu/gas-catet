@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   analytics,
   type TrendItem,
@@ -79,15 +80,13 @@ function RoastCard({ year, month }: { year: number; month: number }) {
             <p className="text-sm font-bold" style={{ color: "#FF6B00" }}>
               Kuota roast harian habis (3x/hari)
             </p>
-            <a
-              href="https://dna-indonesia.myr.id/m/gascatet-pro"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/dashboard/upgrade"
               className="text-xs font-bold underline"
               style={{ color: "#FF6B00" }}
             >
               Upgrade ke Pro untuk unlimited roast →
-            </a>
+            </Link>
           </div>
         </div>
       ) : loading ? (

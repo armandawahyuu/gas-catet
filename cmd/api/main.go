@@ -19,6 +19,7 @@ import (
 	"gas-catet/internal/recurring"
 	"gas-catet/internal/telegram"
 	"gas-catet/internal/transaction"
+	"gas-catet/internal/tripay"
 	"gas-catet/internal/user"
 	"gas-catet/internal/wallet"
 
@@ -49,6 +50,13 @@ func main() {
 	geminiBaseURL := os.Getenv("GEMINI_BASE_URL")
 	geminiModel := os.Getenv("GEMINI_MODEL")
 	mayarWebhookSecret := os.Getenv("MAYAR_WEBHOOK_SECRET")
+
+	// Tripay
+	tripayAPIKey := os.Getenv("TRIPAY_API_KEY")
+	tripayPrivateKey := os.Getenv("TRIPAY_PRIVATE_KEY")
+	tripayMerchantCode := os.Getenv("TRIPAY_MERCHANT_CODE")
+	tripayMode := os.Getenv("TRIPAY_MODE")  // "sandbox" or "production"
+	appBaseURL := os.Getenv("APP_BASE_URL") // e.g. https://gascatet.my.id
 
 	port := os.Getenv("APP_PORT")
 	if port == "" {
@@ -321,6 +329,21 @@ func main() {
 	paymentAdapter := payment.NewUserQueriesAdapter(userQueries)
 	paymentHandler := payment.NewHandler(mayarWebhookSecret, paymentAdapter)
 	app.Post("/api/webhook/mayar", paymentHandler.Webhook)
+
+	// Tripay payment integration
+	if tripayAPIKey != "" {
+		tripayClient := tripay.NewClient(tripayAPIKey, tripayPrivateKey, tripayMerchantCode, tripayMode == "sandbox")
+		tripayPlanAdapter := tripay.NewPlanAdapter(userQueries)
+		tripayHandler := tripay.NewHandler(tripayClient, pool, tripayPlanAdapter, appBaseURL)
+
+		// Public webhook endpoint
+		app.Post("/api/webhooks/tripay", tripayHandler.Webhook)
+
+		// Authenticated API endpoints
+		payGroup := api.Group("/payment", userHandler.AuthMiddleware)
+		payGroup.Get("/channels", tripayHandler.GetPaymentChannels)
+		payGroup.Post("/create-order", tripayHandler.CreateOrder)
+	}
 
 	// Telegram webhook (verified by secret token in header)
 	telegramWebhookSecret := os.Getenv("TELEGRAM_WEBHOOK_SECRET")

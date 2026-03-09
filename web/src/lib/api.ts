@@ -631,6 +631,34 @@ export interface AdminAnalytics {
   user_growth: AdminUserGrowth[];
 }
 
+// Payment
+export interface PaymentChannel {
+  code: string;
+  name: string;
+  group: string;
+  icon_url: string;
+  fee: number;
+}
+
+export interface CreateOrderResponse {
+  reference: string;
+  merchant_ref: string;
+  checkout_url: string;
+  amount: number;
+  pay_code: string;
+  status: string;
+}
+
+export const payment = {
+  channels: () =>
+    request<{ channels: PaymentChannel[]; price: number }>("/api/payment/channels"),
+  createOrder: (method: string) =>
+    request<CreateOrderResponse>("/api/payment/create-order", {
+      method: "POST",
+      body: JSON.stringify({ method }),
+    }),
+};
+
 // Page view tracking (public, no auth)
 export const trackPageView = (path: string, referrer?: string) => {
   fetch(`${API_BASE}/api/track`, {

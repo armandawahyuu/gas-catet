@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Lock, Sparkles } from "lucide-react";
 
 interface UpgradePromptProps {
@@ -20,16 +21,14 @@ export function UpgradePrompt({ feature }: UpgradePromptProps) {
         <p className="text-sm opacity-70 mb-4">
           <strong>{feature}</strong> khusus untuk pengguna paket Pro.
         </p>
-        <a
-          href="https://dna-indonesia.myr.id/m/gascatet-pro"
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href="/dashboard/upgrade"
           className="inline-flex items-center gap-2 neo-border px-6 py-3 font-bold text-white hover:-translate-y-0.5 transition-transform"
           style={{ background: "#FF6B00" }}
         >
           <Sparkles size={18} strokeWidth={3} />
           Upgrade ke Pro — Rp35rb/bulan
-        </a>
+        </Link>
         <p className="text-xs opacity-50 mt-3">
           Unlimited dompet, budget, goals, recurring, scan struk AI, export CSV, dan lainnya!
         </p>

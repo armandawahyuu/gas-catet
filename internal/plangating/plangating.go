@@ -51,7 +51,7 @@ func RequirePro(pool *pgxpool.Pool) fiber.Handler {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"error":            "fitur ini khusus paket Pro",
 				"upgrade_required": true,
-				"upgrade_url":      "https://dna-indonesia.myr.id/m/gascatet-pro",
+				"upgrade_url":      "/dashboard/upgrade",
 			})
 		}
 

@@ -829,7 +829,7 @@ func (h *Handler) handlePhoto(chatID, telegramID int64, photos []Photo) {
 		ctx := context.Background()
 		userRow, err := h.getUserByTelegramID(ctx, telegramID)
 		if err == nil && userRow.Plan != plangating.PlanPro {
-			h.sendMessage(chatID, "🔒 Fitur Scan Struk AI khusus paket Pro.\n\nUpgrade di: https://dna-indonesia.myr.id/m/gascatet-pro")
+			h.sendMessage(chatID, "🔒 Fitur Scan Struk AI khusus paket Pro.\n\nUpgrade di: https://gascatet.my.id/dashboard/upgrade")
 			return
 		}
 	}

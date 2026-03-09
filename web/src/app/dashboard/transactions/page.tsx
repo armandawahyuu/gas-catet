@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   transactions as txApi,
   categories as categoriesApi,
@@ -127,17 +128,15 @@ export default function TransactionsPage() {
               Export CSV Bulan Ini
             </button>
           ) : (
-            <a
-              href="https://dna-indonesia.myr.id/m/gascatet-pro"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/dashboard/upgrade"
               className="neo-btn px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm opacity-70"
               style={{ background: "#ccc", color: "#666" }}
             >
               <Lock size={14} strokeWidth={3} />
               Export CSV
               <span className="text-[9px] font-bold px-1 py-0.5 rounded" style={{ background: "#FF6B00", color: "#fff" }}>PRO</span>
-            </a>
+            </Link>
           )}
           <button
             onClick={() => {

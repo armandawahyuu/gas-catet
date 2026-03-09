@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Neo-brutalism shadow -->
+  <rect x="14" y="14" width="180" height="180" rx="14" ry="14" fill="#121212"/>
+  <!-- Yellow square -->
+  <rect x="6" y="6" width="180" height="180" rx="14" ry="14" fill="#FFCC00" stroke="#121212" stroke-width="5"/>
+  <!-- Lightning bolt -->
+  <path d="M110 28 L66 106 L92 106 L84 172 L130 94 L104 94 Z" fill="#121212" stroke="#121212" stroke-width="1" stroke-linejoin="round"/>
+</svg>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { categories as categoriesApi, userSettings, type CategoryItem2 } from "@/lib/api";
 import { Settings, User, Lock, Tags, Plus, Trash2, Crown, Coffee } from "lucide-react";
@@ -171,15 +172,13 @@ export default function SettingsPage() {
             </div>
           </div>
           {profile?.plan !== "pro" && !profile?.early_access && (
-            <a
-              href="https://dna-indonesia.myr.id/m/gascatet-pro"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/dashboard/upgrade"
               className="neo-btn px-5 py-2.5 text-sm font-bold text-white"
               style={{ background: "#FF3B30" }}
             >
               Upgrade Pro ☕
-            </a>
+            </Link>
           )}
           {profile?.early_access && profile?.plan !== "pro" && (
             <span
