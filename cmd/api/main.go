@@ -13,6 +13,7 @@ import (
 	"gas-catet/internal/analytics"
 	"gas-catet/internal/category"
 	"gas-catet/internal/database"
+	"gas-catet/internal/feedback"
 	"gas-catet/internal/goal"
 	"gas-catet/internal/payment"
 	"gas-catet/internal/plangating"
@@ -304,10 +305,15 @@ func main() {
 	analyticsGroup.Get("/categories", analyticsHandler.Categories)
 	analyticsGroup.Get("/roast", analyticsHandler.Roast)
 
+	// Feedback (auth required)
+	feedbackHandler := feedback.NewHandler(pool)
+	api.Post("/feedback", userHandler.AuthMiddleware, feedbackHandler.Submit)
+
 	adminGroup := api.Group("/admin", userHandler.AuthMiddleware, adminHandler.AdminOnly)
 	adminGroup.Get("/dashboard", adminHandler.Dashboard)
 	adminGroup.Get("/growth", adminHandler.Growth)
 	adminGroup.Get("/analytics", adminHandler.Analytics)
+	adminGroup.Get("/feedbacks", feedbackHandler.ListAll)
 
 	// Check admin status (auth required, no admin-only)
 	api.Get("/admin/check", userHandler.AuthMiddleware, adminHandler.CheckAdmin)

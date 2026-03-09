@@ -31,6 +31,14 @@ type FeatureUsage struct {
 	UsedAt  pgtype.Date `json:"used_at"`
 }
 
+type Feedback struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Message   string             `json:"message"`
+	Rating    pgtype.Int2        `json:"rating"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Goal struct {
 	ID            pgtype.UUID        `json:"id"`
 	UserID        pgtype.UUID        `json:"user_id"`

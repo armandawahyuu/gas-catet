@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   TrendingUp,
   Users,
+  MessageSquare,
   Menu,
   X,
 } from "lucide-react";
@@ -19,6 +20,7 @@ const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/dashboard/growth", label: "Growth", icon: TrendingUp },
   { href: "/admin/dashboard/users", label: "Users", icon: Users },
+  { href: "/admin/dashboard/feedbacks", label: "Feedbacks", icon: MessageSquare },
 ];
 
 export default function AdminDashboardLayout({

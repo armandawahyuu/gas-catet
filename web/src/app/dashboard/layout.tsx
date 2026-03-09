@@ -20,6 +20,7 @@ import {
   Target,
 } from "lucide-react";
 import { useState } from "react";
+import FeedbackButton from "@/components/FeedbackButton";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, pro: false },
@@ -183,6 +184,7 @@ export default function DashboardLayout({
         </div>
 
         <div className="p-6 lg:p-8 max-w-7xl mx-auto">{children}</div>
+        <FeedbackButton />
       </main>
     </div>
   );

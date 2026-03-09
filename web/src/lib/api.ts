@@ -609,6 +609,10 @@ export const adminApi = {
   dashboard: () => request<AdminDashboard>("/api/admin/dashboard"),
   growth: () => request<AdminGrowth>("/api/admin/growth"),
   analytics: () => request<AdminAnalytics>("/api/admin/analytics"),
+  feedbacks: (page = 1) =>
+    request<{ feedbacks: FeedbackItem[]; total: number; page: number; per_page: number }>(
+      `/api/admin/feedbacks?page=${page}`
+    ),
 };
 
 // Admin Analytics types
@@ -656,6 +660,25 @@ export const payment = {
     request<CreateOrderResponse>("/api/payment/create-order", {
       method: "POST",
       body: JSON.stringify({ method }),
+    }),
+};
+
+// Feedback
+export interface FeedbackItem {
+  id: string;
+  user_id: string;
+  message: string;
+  rating: number | null;
+  created_at: string;
+  user_name: string;
+  user_email: string;
+}
+
+export const feedbackApi = {
+  submit: (message: string, rating?: number) =>
+    request<{ id: string }>("/api/feedback", {
+      method: "POST",
+      body: JSON.stringify({ message, rating: rating || null }),
     }),
 };
 
