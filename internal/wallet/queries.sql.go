@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countWalletsByUser = `-- name: CountWalletsByUser :one
+SELECT COUNT(*)::BIGINT AS count FROM wallets WHERE user_id = $1
+`
+
+func (q *Queries) CountWalletsByUser(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countWalletsByUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createTransfer = `-- name: CreateTransfer :one
 INSERT INTO transfers (user_id, from_wallet_id, to_wallet_id, amount, note)
 VALUES ($1, $2, $3, $4, $5)

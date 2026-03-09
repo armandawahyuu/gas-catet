@@ -66,6 +66,9 @@ UPDATE users
 SET plan = 'free', subscription_expires_at = NULL
 WHERE email = $1;
 
+-- name: GetUserPlan :one
+SELECT plan FROM users WHERE id = $1;
+
 -- name: GetUserByMayarCustomerID :one
 SELECT id, email, name, telegram_id, created_at, plan, subscription_expires_at
 FROM users

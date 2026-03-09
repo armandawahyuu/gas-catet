@@ -170,8 +170,7 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
-          {/* TODO: enable after early access ends
-          {profile?.plan !== "pro" && (
+          {profile?.plan !== "pro" && !profile?.early_access && (
             <a
               href="https://dna-indonesia.myr.id/m/gascatet-pro"
               target="_blank"
@@ -182,7 +181,14 @@ export default function SettingsPage() {
               Upgrade Pro ☕
             </a>
           )}
-          */}
+          {profile?.early_access && profile?.plan !== "pro" && (
+            <span
+              className="px-3 py-1.5 text-xs font-bold rounded"
+              style={{ background: "#C7F9CC", color: "#00693E" }}
+            >
+              ✨ Early Access — Semua fitur aktif!
+            </span>
+          )}
         </div>
       </section>
 

@@ -24,6 +24,13 @@ type Category struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type FeatureUsage struct {
+	ID      int64       `json:"id"`
+	UserID  pgtype.UUID `json:"user_id"`
+	Feature string      `json:"feature"`
+	UsedAt  pgtype.Date `json:"used_at"`
+}
+
 type Goal struct {
 	ID            pgtype.UUID        `json:"id"`
 	UserID        pgtype.UUID        `json:"user_id"`
@@ -32,6 +39,13 @@ type Goal struct {
 	CurrentAmount int64              `json:"current_amount"`
 	Deadline      pgtype.Date        `json:"deadline"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+type LinkToken struct {
+	Token     string             `json:"token"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type PageView struct {

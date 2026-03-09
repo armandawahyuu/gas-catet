@@ -11,6 +11,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countFeatureUsageToday = `-- name: CountFeatureUsageToday :one
+SELECT COUNT(*)::BIGINT AS count
+FROM feature_usage
+WHERE user_id = $1 AND feature = $2 AND used_at = CURRENT_DATE
+`
+
+type CountFeatureUsageTodayParams struct {
+	UserID  pgtype.UUID `json:"user_id"`
+	Feature string      `json:"feature"`
+}
+
+func (q *Queries) CountFeatureUsageToday(ctx context.Context, arg CountFeatureUsageTodayParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countFeatureUsageToday, arg.UserID, arg.Feature)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getCategoryBreakdown = `-- name: GetCategoryBreakdown :many
 SELECT
   category,
@@ -248,4 +266,18 @@ func (q *Queries) GetTopDescriptions(ctx context.Context, arg GetTopDescriptions
 		return nil, err
 	}
 	return items, nil
+}
+
+const insertFeatureUsage = `-- name: InsertFeatureUsage :exec
+INSERT INTO feature_usage (user_id, feature) VALUES ($1, $2)
+`
+
+type InsertFeatureUsageParams struct {
+	UserID  pgtype.UUID `json:"user_id"`
+	Feature string      `json:"feature"`
+}
+
+func (q *Queries) InsertFeatureUsage(ctx context.Context, arg InsertFeatureUsageParams) error {
+	_, err := q.db.Exec(ctx, insertFeatureUsage, arg.UserID, arg.Feature)
+	return err
 }

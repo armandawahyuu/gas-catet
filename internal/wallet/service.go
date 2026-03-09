@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"gas-catet/internal/plangating"
+
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -15,6 +17,7 @@ var (
 	ErrSameWallet        = errors.New("dompet asal dan tujuan tidak boleh sama")
 	ErrInvalidAmount     = errors.New("nominal harus lebih dari 0")
 	ErrInsufficientFunds = errors.New("saldo dompet asal tidak cukup")
+	ErrWalletLimitFree   = errors.New("paket Free maksimal 2 dompet, upgrade ke Pro untuk unlimited")
 )
 
 type Service struct {
@@ -103,6 +106,15 @@ func (s *Service) Create(ctx context.Context, userID pgtype.UUID, req CreateRequ
 	}
 	if req.Icon == "" {
 		req.Icon = "💰"
+	}
+
+	// Check wallet limit for free users
+	plan := plangating.CheckPlan(ctx, s.pool, userID)
+	if plan == plangating.PlanFree {
+		count, err := s.queries.CountWalletsByUser(ctx, userID)
+		if err == nil && count >= plangating.MaxFreeWallets {
+			return WalletResponse{}, ErrWalletLimitFree
+		}
 	}
 
 	w, err := s.queries.CreateWallet(ctx, CreateWalletParams{

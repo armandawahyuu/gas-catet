@@ -6,8 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"gas-catet/internal/plangating"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // RoastGenerator is an interface for AI text generation (implemented by telegram.OCRService)
@@ -18,10 +21,11 @@ type RoastGenerator interface {
 type Handler struct {
 	service  *Service
 	roastGen RoastGenerator
+	pool     *pgxpool.Pool
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, pool *pgxpool.Pool) *Handler {
+	return &Handler{service: service, pool: pool}
 }
 
 func (h *Handler) SetRoastGenerator(rg RoastGenerator) {
@@ -109,6 +113,23 @@ func (h *Handler) Roast(c *fiber.Ctx) error {
 	}
 
 	userID := c.Locals("user_id").(pgtype.UUID)
+
+	// Rate limit: free users max 3x/day
+	plan := plangating.CheckPlan(c.Context(), h.pool, userID)
+	if plan == plangating.PlanFree {
+		count, err := h.service.queries.CountFeatureUsageToday(c.Context(), CountFeatureUsageTodayParams{
+			UserID:  userID,
+			Feature: "roast",
+		})
+		if err == nil && count >= int64(plangating.MaxFreeRoastPerDay) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error":            fmt.Sprintf("AI Roast gratis %dx/hari. Upgrade Pro untuk unlimited!", plangating.MaxFreeRoastPerDay),
+				"upgrade_required": true,
+				"upgrade_url":      "https://dna-indonesia.myr.id/m/gascatet-pro",
+			})
+		}
+	}
+
 	name := "Bos"
 	year, month := parseYearMonth(c)
 
@@ -171,6 +192,12 @@ Data keuangan:
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "AI lagi males nge-roast, coba lagi nanti"})
 	}
+
+	// Track usage for rate limiting
+	_ = h.service.queries.InsertFeatureUsage(c.Context(), InsertFeatureUsageParams{
+		UserID:  userID,
+		Feature: "roast",
+	})
 
 	return c.JSON(fiber.Map{"roast": roastText})
 }

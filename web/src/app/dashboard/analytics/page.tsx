@@ -9,7 +9,7 @@ import {
   type CategoryItem,
 } from "@/lib/api";
 import { formatRupiah, formatMonthYear, getCurrentMonth } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Award, ChevronLeft, ChevronRight, Flame, RefreshCw } from "lucide-react";
+import { TrendingUp, TrendingDown, Award, ChevronLeft, ChevronRight, Flame, RefreshCw, Lock } from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -27,14 +27,22 @@ function RoastCard({ year, month }: { year: number; month: number }) {
   const [roast, setRoast] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [upgradeRequired, setUpgradeRequired] = useState(false);
 
   const fetchRoast = useCallback(() => {
     setLoading(true);
     setError("");
+    setUpgradeRequired(false);
     analytics
       .roast(year, month)
       .then((r) => setRoast(r.roast))
-      .catch(() => setError("Gagal generate roast 😿"))
+      .catch((err) => {
+        if (err?.message?.toLowerCase().includes("upgrade")) {
+          setUpgradeRequired(true);
+        } else {
+          setError("Gagal generate roast 😿");
+        }
+      })
       .finally(() => setLoading(false));
   }, [year, month]);
 
@@ -64,7 +72,25 @@ function RoastCard({ year, month }: { year: number; month: number }) {
           Roast Lagi
         </button>
       </div>
-      {loading ? (
+      {upgradeRequired ? (
+        <div className="flex items-center gap-3">
+          <Lock size={18} style={{ color: "#FF6B00" }} />
+          <div>
+            <p className="text-sm font-bold" style={{ color: "#FF6B00" }}>
+              Kuota roast harian habis (3x/hari)
+            </p>
+            <a
+              href="https://dna-indonesia.myr.id/m/gascatet-pro"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-bold underline"
+              style={{ color: "#FF6B00" }}
+            >
+              Upgrade ke Pro untuk unlimited roast →
+            </a>
+          </div>
+        </div>
+      ) : loading ? (
         <div className="space-y-2 animate-pulse">
           <div className="h-4 rounded" style={{ background: "#FFD9B3", width: "90%" }} />
           <div className="h-4 rounded" style={{ background: "#FFD9B3", width: "75%" }} />
@@ -92,19 +118,18 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
+    Promise.allSettled([
       analytics.summary(year, month),
       analytics.trend(6),
       analytics.topExpenses(year, month, 5),
       analytics.categories(year, month),
     ])
       .then(([s, t, te, cat]) => {
-        setSummary(s);
-        setTrend(t.months || []);
-        setTopExpenses(te.items || []);
-        setCategories(cat.items || []);
+        if (s.status === "fulfilled") setSummary(s.value);
+        if (t.status === "fulfilled") setTrend(t.value.months || []);
+        if (te.status === "fulfilled") setTopExpenses(te.value.items || []);
+        if (cat.status === "fulfilled") setCategories(cat.value.items || []);
       })
-      .catch(console.error)
       .finally(() => setLoading(false));
   }, [year, month]);
 

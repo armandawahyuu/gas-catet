@@ -13,6 +13,7 @@ interface AuthContextType {
   token: string | null;
   profile: Profile | null;
   loading: boolean;
+  isPro: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
@@ -71,9 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(p);
   };
 
+  // User has Pro access if: plan is "pro" OR early_access is enabled
+  const isPro = profile?.plan === "pro" || profile?.early_access === true;
+
   return (
     <AuthContext.Provider
-      value={{ token, profile, loading, login, register, logout, refreshProfile }}
+      value={{ token, profile, loading, isPro, login, register, logout, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>

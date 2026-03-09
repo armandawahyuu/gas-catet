@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { wallets as walletsApi, transfers as transfersApi, type WalletItem, type TransferItem } from "@/lib/api";
 import { formatRupiah } from "@/lib/utils";
-import { Wallet, Plus, Pencil, Trash2, X, ArrowRightLeft } from "lucide-react";
+import { Wallet, Plus, Pencil, Trash2, X, ArrowRightLeft, Lock } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
 const ICON_OPTIONS = ["💵", "🏦", "📱", "💳", "🪙", "💰", "🏧", "💎"];
 
 export default function WalletsPage() {
+  const { isPro } = useAuth();
   const [walletList, setWalletList] = useState<WalletItem[]>([]);
   const [totalBalance, setTotalBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -88,17 +90,28 @@ export default function WalletsPage() {
               Transfer
             </button>
           )}
-          <button
-            onClick={() => {
-              setEditWallet(null);
-              setShowForm(true);
-            }}
-            className="neo-btn px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-1.5 sm:gap-2 text-white text-xs sm:text-sm"
-            style={{ background: "#00C781" }}
-          >
-            <Plus size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" />
-            Tambah Dompet
-          </button>
+          {!isPro && walletList.length >= 2 ? (
+            <button
+              disabled
+              className="neo-btn px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm opacity-60 cursor-not-allowed"
+              style={{ background: "#ccc", color: "#666" }}
+            >
+              <Lock size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" />
+              Maks 2 Dompet (Free)
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setEditWallet(null);
+                setShowForm(true);
+              }}
+              className="neo-btn px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-1.5 sm:gap-2 text-white text-xs sm:text-sm"
+              style={{ background: "#00C781" }}
+            >
+              <Plus size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" />
+              Tambah Dompet
+            </button>
+          )}
         </div>
       </div>
 

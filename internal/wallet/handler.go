@@ -50,6 +50,12 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		case ErrWalletExists:
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
+		case ErrWalletLimitFree:
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error":            err.Error(),
+				"upgrade_required": true,
+				"upgrade_url":      "https://dna-indonesia.myr.id/m/gascatet-pro",
+			})
 		default:
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "gagal buat dompet"})
 		}

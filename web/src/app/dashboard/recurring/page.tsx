@@ -11,6 +11,8 @@ import {
 } from "@/lib/api";
 import { formatRupiah } from "@/lib/utils";
 import { RefreshCw, Plus, Trash2, X, Pause, Play } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 
 const FREQ_LABELS: Record<string, string> = {
   daily: "Harian",
@@ -20,6 +22,7 @@ const FREQ_LABELS: Record<string, string> = {
 };
 
 export default function RecurringPage() {
+  const { isPro } = useAuth();
   const [list, setList] = useState<RecurringItem[]>([]);
   const [categoryList, setCategoryList] = useState<CategoryItem2[]>([]);
   const [walletList, setWalletList] = useState<WalletItem[]>([]);
@@ -125,6 +128,10 @@ export default function RecurringPage() {
   const filteredCategories = categoryList.filter(
     (c) => c.type === formType
   );
+
+  if (!isPro) {
+    return <UpgradePrompt feature="Transaksi Berulang" />;
+  }
 
   if (loading) {
     return (

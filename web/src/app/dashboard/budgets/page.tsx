@@ -9,6 +9,8 @@ import {
 } from "@/lib/api";
 import { formatRupiah } from "@/lib/utils";
 import { PiggyBank, Plus, Trash2, X, Sparkles, Check } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 
 // === BUDGET TEMPLATES ===
 type TemplateItem = { category: string; pct: number };
@@ -123,6 +125,7 @@ const BUDGET_TEMPLATES: Template[] = [
 ];
 
 export default function BudgetsPage() {
+  const { isPro } = useAuth();
   const [budgetList, setBudgetList] = useState<BudgetItem[]>([]);
   const [categoryList, setCategoryList] = useState<CategoryItem2[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,6 +264,10 @@ export default function BudgetsPage() {
     if (!num) return "";
     return Number(num).toLocaleString("id-ID");
   };
+
+  if (!isPro) {
+    return <UpgradePrompt feature="Anggaran & Template Budget" />;
+  }
 
   if (loading) {
     return (

@@ -22,15 +22,15 @@ import {
 import { useState } from "react";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/transactions", label: "Transaksi", icon: Receipt },
-  { href: "/dashboard/wallets", label: "Dompet", icon: Wallet },
-  { href: "/dashboard/budgets", label: "Anggaran", icon: PiggyBank },
-  { href: "/dashboard/goals", label: "Target", icon: Target },
-  { href: "/dashboard/recurring", label: "Berulang", icon: RefreshCw },
-  { href: "/dashboard/analytics", label: "Analitik", icon: BarChart3 },
-  { href: "/dashboard/telegram", label: "Telegram", icon: Link2 },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, pro: false },
+  { href: "/dashboard/transactions", label: "Transaksi", icon: Receipt, pro: false },
+  { href: "/dashboard/wallets", label: "Dompet", icon: Wallet, pro: false },
+  { href: "/dashboard/budgets", label: "Anggaran", icon: PiggyBank, pro: true },
+  { href: "/dashboard/goals", label: "Target", icon: Target, pro: true },
+  { href: "/dashboard/recurring", label: "Berulang", icon: RefreshCw, pro: true },
+  { href: "/dashboard/analytics", label: "Analitik", icon: BarChart3, pro: false },
+  { href: "/dashboard/telegram", label: "Telegram", icon: Link2, pro: false },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, pro: false },
 ];
 
 export default function DashboardLayout({
@@ -38,7 +38,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { profile, loading, logout } = useAuth();
+  const { profile, loading, logout, isPro } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -125,6 +125,14 @@ export default function DashboardLayout({
               >
                 <item.icon size={18} strokeWidth={2.5} />
                 {item.label}
+                {item.pro && !isPro && (
+                  <span
+                    className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded"
+                    style={{ background: "#FF6B00", color: "#fff" }}
+                  >
+                    PRO
+                  </span>
+                )}
               </Link>
             );
           })}

@@ -9,6 +9,8 @@ import (
 	"log"
 	"time"
 
+	"gas-catet/internal/plangating"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -40,6 +42,7 @@ type UserResponse struct {
 	Name                  string  `json:"name"`
 	TelegramID            *int64  `json:"telegram_id,omitempty"`
 	Plan                  string  `json:"plan"`
+	EarlyAccess           bool    `json:"early_access"`
 	SubscriptionExpiresAt *string `json:"subscription_expires_at,omitempty"`
 	CreatedAt             string  `json:"created_at"`
 }
@@ -291,11 +294,12 @@ func stringToUUID(s string) (pgtype.UUID, error) {
 
 func toUserResponse(id pgtype.UUID, email, name string, telegramID pgtype.Int8, createdAt pgtype.Timestamptz, plan string, subExpires pgtype.Timestamptz) UserResponse {
 	resp := UserResponse{
-		ID:        uuidToString(id),
-		Email:     email,
-		Name:      name,
-		Plan:      plan,
-		CreatedAt: createdAt.Time.Format(time.RFC3339),
+		ID:          uuidToString(id),
+		Email:       email,
+		Name:        name,
+		Plan:        plan,
+		EarlyAccess: plangating.IsEarlyAccess(),
+		CreatedAt:   createdAt.Time.Format(time.RFC3339),
 	}
 	if telegramID.Valid {
 		resp.TelegramID = &telegramID.Int64

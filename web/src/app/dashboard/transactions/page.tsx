@@ -22,11 +22,14 @@ import {
   Search,
   Camera,
   Image as ImageIcon,
+  Lock,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
 type TxType = "" | "INCOME" | "EXPENSE";
 
 export default function TransactionsPage() {
+  const { isPro } = useAuth();
   const [txList, setTxList] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<TxType>("");
@@ -104,24 +107,38 @@ export default function TransactionsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              const now = new Date();
-              txApi.exportCSV(now.getFullYear(), now.getMonth() + 1).then((blob) => {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `gascatet_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
-              });
-            }}
-            className="neo-btn px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
-            style={{ background: "#FFCC00", color: "#121212" }}
-          >
-            <Download size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" />
-            Export CSV Bulan Ini
-          </button>
+          {isPro ? (
+            <button
+              onClick={() => {
+                const now = new Date();
+                txApi.exportCSV(now.getFullYear(), now.getMonth() + 1).then((blob) => {
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `gascatet_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                });
+              }}
+              className="neo-btn px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
+              style={{ background: "#FFCC00", color: "#121212" }}
+            >
+              <Download size={16} strokeWidth={3} className="sm:w-[18px] sm:h-[18px]" />
+              Export CSV Bulan Ini
+            </button>
+          ) : (
+            <a
+              href="https://dna-indonesia.myr.id/m/gascatet-pro"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="neo-btn px-3 py-2 sm:px-5 sm:py-3 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm opacity-70"
+              style={{ background: "#ccc", color: "#666" }}
+            >
+              <Lock size={14} strokeWidth={3} />
+              Export CSV
+              <span className="text-[9px] font-bold px-1 py-0.5 rounded" style={{ background: "#FF6B00", color: "#fff" }}>PRO</span>
+            </a>
+          )}
           <button
             onClick={() => {
               setEditTx(null);

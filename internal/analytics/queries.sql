@@ -58,3 +58,11 @@ WHERE user_id = $1
   AND transaction_date < $3
 GROUP BY category, transaction_type
 ORDER BY total DESC;
+
+-- name: CountFeatureUsageToday :one
+SELECT COUNT(*)::BIGINT AS count
+FROM feature_usage
+WHERE user_id = $1 AND feature = $2 AND used_at = CURRENT_DATE;
+
+-- name: InsertFeatureUsage :exec
+INSERT INTO feature_usage (user_id, feature) VALUES ($1, $2);

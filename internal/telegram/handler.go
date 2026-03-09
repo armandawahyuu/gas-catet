@@ -10,6 +10,7 @@ import (
 
 	"gas-catet/internal/analytics"
 	"gas-catet/internal/category"
+	"gas-catet/internal/plangating"
 	"gas-catet/internal/transaction"
 	"gas-catet/internal/user"
 	"gas-catet/internal/wallet"
@@ -821,6 +822,16 @@ func (h *Handler) handlePhoto(chatID, telegramID int64, photos []Photo) {
 	if !h.isUserLinked(telegramID) {
 		h.sendMessage(chatID, "⚠️ Akun belum terhubung. Kirim /link <token> dulu ya bos.")
 		return
+	}
+
+	// OCR is Pro-only (unless early access)
+	if !plangating.IsEarlyAccess() {
+		ctx := context.Background()
+		userRow, err := h.getUserByTelegramID(ctx, telegramID)
+		if err == nil && userRow.Plan != plangating.PlanPro {
+			h.sendMessage(chatID, "🔒 Fitur Scan Struk AI khusus paket Pro.\n\nUpgrade di: https://dna-indonesia.myr.id/m/gascatet-pro")
+			return
+		}
 	}
 
 	// Get the largest photo (last in array = highest resolution)

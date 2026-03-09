@@ -63,6 +63,7 @@ export interface Profile {
   name: string;
   telegram_id: number | null;
   plan: string;
+  early_access: boolean;
   subscription_expires_at?: string;
   created_at: string;
 }

@@ -7,8 +7,11 @@ import {
 } from "@/lib/api";
 import { formatRupiah } from "@/lib/utils";
 import { Target, Plus, Trash2, X, TrendingUp } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 
 export default function GoalsPage() {
+  const { isPro } = useAuth();
   const [goalList, setGoalList] = useState<GoalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -138,6 +141,10 @@ export default function GoalsPage() {
 
   const totalTarget = goalList.reduce((s, g) => s + g.target_amount, 0);
   const totalCurrent = goalList.reduce((s, g) => s + g.current_amount, 0);
+
+  if (!isPro) {
+    return <UpgradePrompt feature="Target Tabungan" />;
+  }
 
   if (loading) {
     return (

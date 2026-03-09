@@ -196,6 +196,17 @@ func (q *Queries) GetUserByTelegramID(ctx context.Context, telegramID pgtype.Int
 	return i, err
 }
 
+const getUserPlan = `-- name: GetUserPlan :one
+SELECT plan FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserPlan(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getUserPlan, id)
+	var plan string
+	err := row.Scan(&plan)
+	return plan, err
+}
+
 const linkTelegram = `-- name: LinkTelegram :one
 UPDATE users
 SET telegram_id = $2

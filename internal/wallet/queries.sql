@@ -39,6 +39,9 @@ SELECT COALESCE(SUM(balance), 0)::BIGINT AS total
 FROM wallets
 WHERE user_id = $1;
 
+-- name: CountWalletsByUser :one
+SELECT COUNT(*)::BIGINT AS count FROM wallets WHERE user_id = $1;
+
 -- name: SeedDefaultWallets :exec
 INSERT INTO wallets (user_id, name, icon) VALUES
     ($1, 'Cash', '💵'),

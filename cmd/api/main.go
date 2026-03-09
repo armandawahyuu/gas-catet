@@ -15,6 +15,7 @@ import (
 	"gas-catet/internal/database"
 	"gas-catet/internal/goal"
 	"gas-catet/internal/payment"
+	"gas-catet/internal/plangating"
 	"gas-catet/internal/recurring"
 	"gas-catet/internal/telegram"
 	"gas-catet/internal/transaction"
@@ -72,7 +73,7 @@ func main() {
 
 	analyticsQueries := analytics.New(pool)
 	analyticsSvc := analytics.NewService(analyticsQueries)
-	analyticsHandler := analytics.NewHandler(analyticsSvc)
+	analyticsHandler := analytics.NewHandler(analyticsSvc, pool)
 
 	catQueries := category.New(pool)
 	catService := category.NewService(catQueries)
@@ -242,7 +243,7 @@ func main() {
 	txGroup.Get("/", txHandler.List)
 	txGroup.Get("/summary", txHandler.MonthlySummary)
 	txGroup.Get("/today", txHandler.TodaySummary)
-	txGroup.Get("/export", txHandler.ExportCSV)
+	txGroup.Get("/export", plangating.RequirePro(pool), txHandler.ExportCSV)
 	txGroup.Get("/:id", txHandler.GetByID)
 	txGroup.Put("/:id", txHandler.Update)
 	txGroup.Delete("/:id", txHandler.Delete)
@@ -254,7 +255,9 @@ func main() {
 	catGroup.Post("/", catHandler.Create)
 	catGroup.Delete("/:id", catHandler.Delete)
 
-	budgetGroup := api.Group("/budgets", userHandler.AuthMiddleware)
+	proPlan := plangating.RequirePro(pool)
+
+	budgetGroup := api.Group("/budgets", userHandler.AuthMiddleware, proPlan)
 	budgetGroup.Get("/", catHandler.ListBudgets)
 	budgetGroup.Post("/", catHandler.UpsertBudget)
 	budgetGroup.Delete("/:id", catHandler.DeleteBudget)
@@ -271,14 +274,14 @@ func main() {
 	transferGroup.Post("/", walHandler.Transfer)
 	transferGroup.Delete("/:id", walHandler.DeleteTransfer)
 
-	recGroup := api.Group("/recurring", userHandler.AuthMiddleware)
+	recGroup := api.Group("/recurring", userHandler.AuthMiddleware, proPlan)
 	recGroup.Get("/", recHandler.List)
 	recGroup.Post("/", recHandler.Create)
 	recGroup.Put("/:id", recHandler.Update)
 	recGroup.Patch("/:id/toggle", recHandler.Toggle)
 	recGroup.Delete("/:id", recHandler.Delete)
 
-	goalGroup := api.Group("/goals", userHandler.AuthMiddleware)
+	goalGroup := api.Group("/goals", userHandler.AuthMiddleware, proPlan)
 	goalGroup.Get("/", goalHandler.List)
 	goalGroup.Post("/", goalHandler.Create)
 	goalGroup.Put("/:id", goalHandler.Update)
@@ -288,7 +291,7 @@ func main() {
 	analyticsGroup := api.Group("/analytics", userHandler.AuthMiddleware)
 	analyticsGroup.Get("/summary", analyticsHandler.Summary)
 	analyticsGroup.Get("/daily", analyticsHandler.Daily)
-	analyticsGroup.Get("/trend", analyticsHandler.Trend)
+	analyticsGroup.Get("/trend", proPlan, analyticsHandler.Trend)
 	analyticsGroup.Get("/top-expenses", analyticsHandler.TopExpenses)
 	analyticsGroup.Get("/categories", analyticsHandler.Categories)
 	analyticsGroup.Get("/roast", analyticsHandler.Roast)
