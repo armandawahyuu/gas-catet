@@ -6,11 +6,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -22,14 +24,9 @@ var (
 )
 
 type Service struct {
-	queries    *Queries
-	jwtSecret  []byte
-	linkTokens map[string]linkTokenData
-}
-
-type linkTokenData struct {
-	UserID    pgtype.UUID
-	ExpiresAt time.Time
+	queries   *Queries
+	jwtSecret []byte
+	pool      *pgxpool.Pool
 }
 
 type AuthResponse struct {
@@ -47,13 +44,13 @@ type UserResponse struct {
 	CreatedAt             string  `json:"created_at"`
 }
 
-func NewService(queries *Queries, jwtSecret string) *Service {
+func NewService(queries *Queries, jwtSecret string, pool *pgxpool.Pool) *Service {
 	s := &Service{
-		queries:    queries,
-		jwtSecret:  []byte(jwtSecret),
-		linkTokens: make(map[string]linkTokenData),
+		queries:   queries,
+		jwtSecret: []byte(jwtSecret),
+		pool:      pool,
 	}
-	// Periodically clean up expired link tokens to prevent memory leaks
+	// Periodically clean up expired link tokens from DB
 	go s.cleanupExpiredTokens()
 	return s
 }
@@ -62,11 +59,9 @@ func (s *Service) cleanupExpiredTokens() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
-		now := time.Now()
-		for token, data := range s.linkTokens {
-			if now.After(data.ExpiresAt) {
-				delete(s.linkTokens, token)
-			}
+		_, err := s.pool.Exec(context.Background(), "DELETE FROM link_tokens WHERE expires_at < NOW()")
+		if err != nil {
+			log.Printf("[WARN] Failed to cleanup expired link tokens: %v", err)
 		}
 	}
 }
@@ -145,25 +140,31 @@ func (s *Service) GenerateLinkToken(userID pgtype.UUID) string {
 	_, _ = rand.Read(tokenBytes)
 	token := hex.EncodeToString(tokenBytes)
 
-	s.linkTokens[token] = linkTokenData{
-		UserID:    userID,
-		ExpiresAt: time.Now().Add(10 * time.Minute),
+	expiresAt := time.Now().Add(10 * time.Minute)
+	_, err := s.pool.Exec(context.Background(),
+		"INSERT INTO link_tokens (token, user_id, expires_at) VALUES ($1, $2, $3) ON CONFLICT (token) DO UPDATE SET user_id = $2, expires_at = $3",
+		token, userID, expiresAt,
+	)
+	if err != nil {
+		log.Printf("[WARN] Failed to store link token: %v", err)
 	}
 
 	return token
 }
 
 func (s *Service) RedeemLinkToken(ctx context.Context, token string, telegramID int64) (UserResponse, error) {
-	data, exists := s.linkTokens[token]
-	if !exists || time.Now().After(data.ExpiresAt) {
-		delete(s.linkTokens, token)
+	var userID pgtype.UUID
+	var expiresAt time.Time
+	err := s.pool.QueryRow(ctx,
+		"DELETE FROM link_tokens WHERE token = $1 RETURNING user_id, expires_at",
+		token,
+	).Scan(&userID, &expiresAt)
+	if err != nil || time.Now().After(expiresAt) {
 		return UserResponse{}, ErrInvalidLinkToken
 	}
 
-	delete(s.linkTokens, token)
-
 	row, err := s.queries.LinkTelegram(ctx, LinkTelegramParams{
-		ID:         data.UserID,
+		ID:         userID,
 		TelegramID: pgtype.Int8{Int64: telegramID, Valid: true},
 	})
 	if err != nil {

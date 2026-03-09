@@ -4,7 +4,9 @@ import (
 	"context"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"gas-catet/internal/admin"
@@ -62,7 +64,7 @@ func main() {
 	log.Println("Database connected")
 
 	userQueries := user.New(pool)
-	userService := user.NewService(userQueries, jwtSecret)
+	userService := user.NewService(userQueries, jwtSecret, pool)
 	userHandler := user.NewHandler(userService)
 
 	txQueries := transaction.New(pool)
@@ -331,6 +333,27 @@ func main() {
 		})
 	}
 
-	log.Printf("GasCatet running on :%s", port)
-	log.Fatal(app.Listen(":" + port))
+	// Graceful shutdown: wait for SIGINT/SIGTERM, then drain connections
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		log.Printf("GasCatet running on :%s", port)
+		if err := app.Listen(":" + port); err != nil {
+			log.Printf("Server error: %v", err)
+		}
+	}()
+
+	<-quit
+	log.Println("Shutting down gracefully...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := app.ShutdownWithContext(shutdownCtx); err != nil {
+		log.Printf("Server shutdown error: %v", err)
+	}
+
+	pool.Close()
+	log.Println("Server stopped")
 }
