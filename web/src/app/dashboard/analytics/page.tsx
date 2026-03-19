@@ -250,8 +250,8 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Roast Card */}
-      <RoastCard year={year} month={month} />
+      {/* Roast Card — disabled for Buku Juragan */}
+      {/* <RoastCard year={year} month={month} /> */}
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

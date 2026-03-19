@@ -303,7 +303,7 @@ func main() {
 	analyticsGroup.Get("/trend", proPlan, analyticsHandler.Trend)
 	analyticsGroup.Get("/top-expenses", analyticsHandler.TopExpenses)
 	analyticsGroup.Get("/categories", analyticsHandler.Categories)
-	analyticsGroup.Get("/roast", analyticsHandler.Roast)
+	// analyticsGroup.Get("/roast", analyticsHandler.Roast) // disabled: AI Roast tidak dipakai di Buku Juragan
 
 	// Feedback (auth required)
 	feedbackHandler := feedback.NewHandler(pool)
